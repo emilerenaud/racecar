@@ -44,7 +44,6 @@ class teleop(object):
         # Software deadman switch
         #If left button is active 
         if (joy_msg.buttons[4]):
-            
             #No button pressed (see below)
             # Closed-loop velocity, Open-loop steering, control mode = 0
             
@@ -71,23 +70,23 @@ class teleop(object):
                 
             #If button B is active 
             elif(joy_msg.buttons[2]):   
-                # Closed-loop position, Closed-loop steering 
-                self.cmd_msg.linear.x  = propulsion_user_input # [m]
+                # Closed-loop position
+                self.cmd_msg.linear.x  = 1.5 # [m]
                 self.cmd_msg.angular.z = steering_user_input # [m]
-                self.cmd_msg.linear.z  = 4  # Control mode
+                self.cmd_msg.linear.z  = 2  # Control mode
                 
             #If button x is active 
             elif(joy_msg.buttons[0]):   
                 # Closed-loop velocity with fixed 1 m/s ref, Closed-loop steering
-                self.cmd_msg.linear.x  = 2 #[m/s]
-                self.cmd_msg.angular.z = 0 # [m]
-                self.cmd_msg.linear.z  = 5  # Control mode
+                self.cmd_msg.linear.x  = 2.25 #[m/s]
+                self.cmd_msg.angular.z = steering_user_input # [m]
+                self.cmd_msg.linear.z  = 0  # Control mode
                 
             #If button y is active 
             elif(joy_msg.buttons[3]):   
                 # Reset Encoder
-                self.cmd_msg.linear.x  = 0
-                self.cmd_msg.angular.z = 0
+                self.cmd_msg.linear.x  = 1
+                self.cmd_msg.angular.z = steering_user_input
                 self.cmd_msg.linear.z  = 6  # Control mode
                 
             #If left trigger is active 
@@ -99,7 +98,7 @@ class teleop(object):
             elif(joy_msg.buttons[11]):
                  # Template for a custom mode
                 self.cmd_msg.linear.x  = 0
-                self.cmd_msg.angular.z = 0
+                self.cmd_msg.angular.z = steering_user_input
                 self.cmd_msg.linear.z  = 7 # Control mode
                 
             #If bottom arrow is active

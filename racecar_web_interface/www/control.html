@@ -67,7 +67,7 @@
             </div>
           </div>
           <div class="status-textbox">
-            <ul id="command_list">
+            <ul id="command_list" style="height:20px; resize:auto; overflow:auto;">
             </ul>
           </div>
           <div style="margin-top: 20px;">
@@ -107,7 +107,7 @@
       </div>
     </div>
     <div class="back-button-box">
-      <a href="/" onclick="closeWebSocket()" class="button-style back-button" > Back</a>
+      <a href="/racecar_web_interface/"  class="button-style back-button" > Back</a>
     </div>
   </div>
   <!-- Main layout END-->
@@ -257,9 +257,12 @@
             status_deadman.innerHTML = "On";
           }
         }
+        // document.getElementById("command_list").scrollTop = document.getElementById("command_list").scrollHeight;
         if( deadman === true ){
           document.getElementById("command_list").innerHTML += ("<li>" + value + "</li>");
-
+          // joyValue.buttons.button5 = 1;
+          // joyValue.buttons.button7 = 1;
+          // joyTopic.publish(joyValue);
           if ( value === "forward"){
             twist.linear.x = 1.0;
   
@@ -279,6 +282,9 @@
         } else {
           twist.linear.x = 0.0;
           twist.angular.z = 0.0;
+          // joyValue.buttons.button5 = 0;
+          // joyValue.buttons.button7 = 0;
+          // joyTopic.publish(joyValue);
         }
       }
       function eraseStatusList(){
@@ -297,7 +303,7 @@
           url : 'ws://'+ip_addr+':9090'
         });
 
-        camera.src = `http://${ip_addr}:8080/stream?topic=/racecar/raspicam_node/image_raw`
+        camera.src = `http://${ip_addr}:8080/stream?topic=/racecar/raspicam_node/image&type=ros_compressed`;
 
       }
       
@@ -321,6 +327,12 @@
                   ros : rbServer,
                   name : '/racecar/cmd_vel_abtr_2',
                   messageType : 'geometry_msgs/Twist'
+              });
+
+              joyTopic = new ROSLIB.Topic({
+                  ros : rbServer,
+                  name : '/racecar/joy',
+                  messageType : 'sensor_msgs/Joy'
               });
 
               propSensorTopic = new ROSLIB.Topic({
@@ -378,6 +390,29 @@
             }
       });
 
+      var joyValue = new ROSLIB.Message({
+        axes : 
+          [ {axe1 : -0.0,
+            axe2 : -0.0,
+            axe3 : -0.0,
+            axe4 : -0.0,
+            axe5 : -0.0,
+            axe6 : -0.0}],
+        buttons : 
+          [ {button1: 0, 
+            button2: 0,
+            button3: 0,
+            button4: 0,
+            button5: 0,
+            button6: 0,
+            button7: 0,
+            button8: 0,
+            button9: 0,
+            button10: 0,
+            button11: 0,
+            button12: 0}]
+      });
+
 
       
       //Publishing loop cmd_vel at 5 Hz
@@ -385,6 +420,7 @@
         if(cmdVelTopic != null)
         {
           cmdVelTopic.publish(twist);
+          
         }
         connectROS();
 

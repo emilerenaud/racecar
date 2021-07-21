@@ -60,16 +60,17 @@ const int dri_dir_pin     = 42; //
 
 //TODO: VOUS DEVEZ DETERMINEZ DES BONS PARAMETRES SUIVANTS
 const float filter_rc  =  0.1;
-const float vel_kp     =  10.0; 
+const float vel_kp     =  5.0; 
 const float vel_ki     =  0.0; 
 const float vel_kd     =  0.0;
-const float pos_kp     =  1.0; 
+const float pos_kp     =  6.0; //6.6
 const float pos_kd     =  0.0;
-const float pos_ki     =  0.0; 
+const float pos_ki     =  0.5; 
 const float pos_ei_sat =  10000.0; 
 
 // Loop period 
 const unsigned long time_period_low   = 2;    // 500 Hz for internal PID loop
+const float dt = time_period_low/1000.0;       // Time between loops PID
 const unsigned long time_period_high  = 10;   // 100 Hz  for ROS communication
 const unsigned long time_period_com   = 1000; // 1000 ms = max com delay (watchdog)
 
@@ -320,12 +321,13 @@ void ctl(){
   // Velocity computation
 
   //TODO: VOUS DEVEZ COMPLETEZ LA DERIVEE FILTRE ICI
-  float vel_raw = (enc_now - enc_old) * tick2m / time_period_low * 1000;
-  float alpha   = 0; // TODO
-  float vel_fil = vel_raw;    // Filter TODO
-  
+  float vel_raw = ((enc_now - enc_old) * tick2m) / (float)time_period_low * 1000.0;
+  float alpha   = 0.5; 
+  float vel_fil = (alpha * vel_raw) + ((1-alpha) * vel_old);
+  vel_fil = vel_fil/2.0;
+  vel_old = vel_fil;
   // Propulsion Controllers
-  
+ 
   //////////////////////////////////////////////////////
   if (ctl_mode == 0 ){
     // Zero output
@@ -341,7 +343,7 @@ void ctl(){
     // Fully Open-Loop
     // Commands received in [Volts] directly
     dri_cmd    = dri_ref;
-    dri_pwm    = cmd2pwm( dri_cmd ) ;
+    dri_pwm    = cmd2pwm( dri_cmd ) ; 
     
     // reset integral actions
     vel_error_int = 0;
@@ -355,12 +357,11 @@ void ctl(){
     float vel_ref, vel_error;
 
     //TODO: VOUS DEVEZ COMPLETEZ LE CONTROLLEUR SUIVANT
-    vel_ref       = dri_ref; 
-    vel_error     = vel_ref - vel_fil;
-    vel_error_int = 0; // TODO
-    dri_cmd       = vel_kp * vel_error; // proportionnal only
-    
-    dri_pwm    = cmd2pwm( dri_cmd ) ;
+    vel_ref        = dri_ref; 
+    vel_error      = vel_ref - vel_fil;
+    dri_cmd        = vel_kp * vel_error; // proportionnal only
+
+    dri_pwm    = cmd2pwm( dri_cmd ) ; 
 
   }
   ///////////////////////////////////////////////////////
@@ -372,18 +373,23 @@ void ctl(){
 
     //TODO: VOUS DEVEZ COMPLETEZ LE CONTROLLEUR SUIVANT
     pos_ref       = dri_ref; 
-    pos_error     = 0; // TODO
+    pos_error     = pos_ref - pos_now; // TODO
     pos_error_ddt = 0; // TODO
-    pos_error_int = 0; // TODO
+    pos_error_int += pos_error*dt; // TODO
     
     // Anti wind-up
     if ( pos_error_int > pos_ei_sat ){
       pos_error_int = pos_ei_sat;
     }
     
-    dri_cmd = 0; // TODO
+    //dri_cmd = 0; // TODO
+    dri_cmd        = pos_kp * pos_error  + pos_ki*pos_error_int; // proportionnal only
+    if(dri_cmd > 4.5)
+      dri_cmd = 4.5;
+    if(dri_cmd < -7)
+      dri_cmd = -7;
     
-    dri_pwm = cmd2pwm( dri_cmd ) ;
+    dri_pwm = cmd2pwm( dri_cmd )  ;
   }
   ///////////////////////////////////////////////////////
   else if (ctl_mode == 4){
@@ -395,8 +401,31 @@ void ctl(){
     vel_error_int = 0 ;
     pos_error_int = 0 ;
     
-    dri_pwm    = pwm_zer_dri ;
+    //dri_pwm    = pwm_zer_dri ;
+     dri_pwm  = cmd2pwm( dri_cmd ) ;
   }
+    //////////////////////////////////////////////////////
+//  else if (ctl_mode == 7 ){
+//    // Fully Open-Loop
+//    // Commands received in [Volts] directly
+//    dri_cmd    = 5;
+//    dri_pwm    = cmd2pwm( dri_cmd ) ;
+//    
+//    // reset integral actions
+//    vel_error_int = 0;
+//    pos_error_int = 0 ;
+//  }
+//    //////////////////////////////////////////////////////
+//  else if (ctl_mode == 8 ){
+//    // Fully Open-Loop
+//    // Commands received in [Volts] directly
+//    dri_cmd    = 7;
+//    dri_pwm    = cmd2pwm( dri_cmd ) ;
+//    
+//    // reset integral actions
+//    vel_error_int = 0;
+//    pos_error_int = 0 ;
+//  }
   ////////////////////////////////////////////////////////
   else {
     // reset integral actions

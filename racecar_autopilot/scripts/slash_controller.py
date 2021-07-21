@@ -131,7 +131,7 @@ class slash_controller(object):
                 u = self.controller2( x , r )
 
                 self.steering_cmd   = u[1] + self.steering_offset
-                self.propulsion_cmd = u[0]     
+                self.propulsion_cmd = u[0]    
                 self.arduino_mode   = 0 # Mode ??? on arduino
                 # TODO: COMPLETEZ LE CONTROLLER
                 #########################################################
@@ -140,16 +140,16 @@ class slash_controller(object):
                 # Reset encoders
                 self.propulsion_cmd = 0
                 self.arduino_mode   = 4  
-                self.steering_cmd   = 0  
+                self.steering_cmd   = self.steering_ref + self.steering_offset
+  
 
                 
             elif ( self.high_level_mode == 7 ):
                 # Template for custom controllers
             
-                self.steering_cmd   = 0 + self.steering_offset
-                self.propulsion_cmd = 0     
-                self.arduino_mode   = 0 # Mode ??? on arduino 
-                
+                self.propulsion_cmd = 4 #m/s    
+                self.arduino_mode   = 1
+                self.steering_cmd   = self.steering_ref + self.steering_offset
                 
             elif ( self.high_level_mode == 8 ):
                 # Template for custom controllers
