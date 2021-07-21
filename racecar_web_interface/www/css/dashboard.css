@@ -108,6 +108,9 @@ body {
   justify-content: center;
   align-items: center;
 }
+button:disabled{
+  opacity:0.5;
+}
 .button-style {
   background-color: rgb(189, 188, 188);
   color: black;
@@ -229,6 +232,7 @@ body {
 .status-textbox{
   background-color: rgb(222, 235, 234);
   width: 50%;
+  height: 150px;
   padding: 5%;
   resize: both;
   overflow: auto;
@@ -244,7 +248,7 @@ body {
 .text-bold{
   font-weight: bold;
 }
-ul {
+li {
   list-style: none;
 }
 

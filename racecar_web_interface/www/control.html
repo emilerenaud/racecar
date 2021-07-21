@@ -66,9 +66,7 @@
               <i id="status-car" class="offline-style" >Offline</i>  
             </div>
           </div>
-          <div class="status-textbox">
-            <ul id="command_list" >
-            </ul>
+          <div id="command_list" class="status-textbox">
           </div>
           <div style="margin-top: 20px;">
             <button class="button-style fa-solid fa-eraser" onclick="eraseStatusList()"></button>
@@ -102,7 +100,7 @@
           <h1 class="text-bold"> Caméra</h1>
         </div>
         <div>
-          <img id="camera_img" src="" alt="Camera not connected" width="100%">
+          <img id="camera_img" src="" alt="Camera not connected" width="90%">
         </div>
       </div>
     </div>
@@ -146,7 +144,10 @@
     var ip_addr = null;
     var deadman = false;
     var sent_flag = 0;
+    var speed_gain = 1;
     var map = {};
+    let speed_gain_timer;
+    let  old_status_value;
 
     let btn_forward = document.getElementById("btn_forward");
     let btn_left = document.getElementById("btn_left");
@@ -163,11 +164,11 @@
       // document.getElementById("log").value = 'Default text\n'
 
       // Disable buttons at beginning
-      // btn_forward.disabled = true;
-      // btn_backward.disabled = true;
-      // btn_left.disabled = true;
-      // btn_right.disabled = true;
-      // btn_deadman.disabled = true;
+      btn_forward.disabled = true;
+      btn_backward.disabled = true;
+      btn_left.disabled = true;
+      btn_right.disabled = true;
+      btn_deadman.disabled = true;
 
       new URLSearchParams(window.location.search).forEach((ip,name) => {
       ip_addr = ip
@@ -182,31 +183,65 @@
       map[event.keyCode] = event.type == 'keydown';
 
       if (map[32] === true){ 
+        event.preventDefault();
+      }
+
+      if (map[32] === true){ 
         deadman = true;
         if(sent_flag === 0){
           btn_deadman.style = "border-style:inset;";
           addStatusList("deadman");
           sent_flag = -1;
         }
-        if(map[87] === true && sent_flag !== 1){
+        if(map[16] === true && (map[87] === true ^ map[83] === true)){
+
+          if( !speed_gain_timer ){
+
+            speed_gain_timer = setInterval(function(){
+            if(speed_gain<=2){
+
+              speed_gain += 0.02;
+
+            }
+
+          }, 100);
+
+          }
+
+
+        } else {
+          speed_gain = 1;
+          clearInterval(speed_gain_timer);
+          speed_gain_timer = null;
+        }
+
+        if(map[87] === true){
+          btn_forward.style = "border-style:inset;";
           addStatusList("forward");
-          sent_flag = 1;
 
+        } else {
+          btn_forward.style = null;
         }
-        if (map[83] === true && sent_flag !== 2){
+        if (map[83] === true){
+          btn_backward.style = "border-style:inset;";
           addStatusList("backward");
-          sent_flag = 2;  
-      
+     
+        } else {
+          btn_backward.style = null;
         }
-        if (map[65] === true && sent_flag !== 3){
+        if (map[65] === true ){
+          btn_left.style = "border-style:inset;";
           addStatusList("left");
-          sent_flag = 3;
 
+        } else {
+          btn_left.style = null;
         }
-        if (map[68] === true && sent_flag !== 4){
+        if (map[68] === true){
+          btn_right.style = "border-style:inset;";
           addStatusList("right");
-          sent_flag = 4;
 
+        } else {
+          btn_right.style = null;
         }
         if((map[87] === false && map[83] === false)||(map[87] === false && map[83] === undefined)||(map[87] === undefined && map[83] === false)){
           twist.linear.x = 0;
@@ -225,6 +260,9 @@
         deadman = false;
         twist.linear.x = 0;
         twist.angular.z = 0;
+        speed_gain = 1;
+        clearInterval(speed_gain_timer);
+        speed_gain_timer = null;
         addStatusList("deadman");
         sent_flag=0;
       }
@@ -258,18 +296,28 @@
           status_deadman.innerHTML = "On";
         }
       }
-      // document.getElementById("command_list").scrollTop = document.getElementById("command_list").scrollHeight;
+
+
       if( deadman === true ){
-        document.getElementById("command_list").innerHTML += ("<li>" + value + "</li>");
+
+        if( old_status_value !== value){
+          document.getElementById("command_list").innerHTML += ("<li>" + value + "</li>");
+          document.getElementById("command_list").scrollTop = document.getElementById("command_list").scrollHeight;
+          old_status_value = value;
+
+        }
+
+        twist.linear.z = 0;
+
         if ( value === "forward"){
-          twist.linear.x = 1;
+          twist.linear.x = 1.0 * speed_gain;
 
         } else if( value === "left"){
 
           twist.angular.z = 1;
 
         } else if( value === "backward"){
-          twist.linear.x = -1;
+          twist.linear.x = -1.0 * speed_gain;
 
         } else if( value === "right"){
 
@@ -278,6 +326,7 @@
         } 
   
       } else {
+        twist.linear.z = -1;
         twist.linear.x = 0;
         twist.angular.z = 0;
       }
@@ -312,15 +361,15 @@
             status_car.innerHTML = "Online";
 
             btn_forward.disabled = false;
-            btn_backward.classList.disabled = false;
-            btn_left.classList.disabled = false;
-            btn_right.classList.disabled = false;
-            btn_deadman.classList.disabled = false;
+            btn_backward.disabled = false;
+            btn_left.disabled = false;
+            btn_right.disabled = false;
+            btn_deadman.disabled = false;
 
             // These lines create a topic object as defined by roslibjs
             cmdVelTopic = new ROSLIB.Topic({
                 ros : rbServer,
-                name : '/racecar/cmd_vel_abtr_2',
+                name : '/racecar/cmd_vel_abtr_0',
                 messageType : 'geometry_msgs/Twist'
             });
 
@@ -341,11 +390,11 @@
         status_car.classList.add("offline-style");
         status_car.innerHTML = "Offline";
 
-        // btn_forward.disabled = true;
-        // btn_backward.disabled = true;
-        // btn_left.disabled = true;
-        // btn_right.disabled = true;
-        // btn_deadman.disabled = true;
+        btn_forward.disabled = true;
+        btn_backward.disabled = true;
+        btn_left.disabled = true;
+        btn_right.disabled = true;
+        btn_deadman.disabled = true;
       });
 
       rbServer.on('close', function() {
@@ -355,11 +404,11 @@
         status_car.classList.add("offline-style");
         status_car.innerHTML = "Offline";
 
-        // btn_forward.disabled = true;
-        // btn_backward.disabled = true;
-        // btn_left.disabled = true;
-        // btn_right.disabled = true;
-        // btn_deadman.disabled = true;
+        btn_forward.disabled = true;
+        btn_backward.disabled = true;
+        btn_left.disabled = true;
+        btn_right.disabled = true;
+        btn_deadman.disabled = true;
 
       });
 
