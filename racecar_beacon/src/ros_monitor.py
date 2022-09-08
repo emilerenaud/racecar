@@ -10,9 +10,9 @@ from sensor_msgs.msg import LaserScan
 class ROSMonitor:
     def __init__(self):
         # Add your subscriber here (odom? laserscan?):
-        # self.sub_odom = rospy.Subcriber(...)
-        # self.sub_laser = rospy.Subscriber(...)
 
+        self.sub_odom = rospy.Subscriber("/odometry/filtered", LaserScan, self.scan_odom)
+        self.sub_laser = rospy.Subscriber("/scan", LaserScan, self.scan_laser)
         # Current robot state:
         self.id = 0xFFFF
         self.pos = (0,0,0)
@@ -32,6 +32,13 @@ class ROSMonitor:
         # self.rr_socket = socket.Socket(...)
         while True:
             pass
+
+    def scan_laser(self,msg):
+        pass
+
+    def scan_odom(self,msg):
+        pass
+
 
 if __name__=="__main__":
     rospy.init_node("ros_monitor")
