@@ -55,10 +55,18 @@ if __name__=="__main__":
 
         # Wait for the message.
         try:
-            data, addr = s.recvfrom(1024)
-            print("Received data from",addr," : ",data) #addr doesnt work.
+            dataReceived, addr = s.recvfrom(1024)
+            print("Received data from",addr," : ",dataReceived) #addr doesnt work.
             # data_unpack = unpack("fffI",data)
             # print("received message: ",data_unpack)
         except:
             pass
 
+        if menuSelection == '1':
+            data_unpack = unpack("fffI",dataReceived)
+        if menuSelection == '2':
+            data_unpack = unpack("fffI",dataReceived)
+        if menuSelection == '3':
+            data_unpack = unpack("fffI",dataReceived)
+            
+        print("received message: ",data_unpack)
