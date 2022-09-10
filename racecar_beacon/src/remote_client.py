@@ -37,38 +37,39 @@ if __name__=="__main__":
         exit()
         pass
 
-    menuSelection = menu()
-    if menuSelection != '1' and menuSelection != '2' and menuSelection != '3':
-        print("Choose a real option dumbass")
-    else:
-        if menuSelection == '1':
-            msg = 'RPOS'.encode('utf-8')
-        elif menuSelection == '2':
-            msg = 'OBSF'.encode('utf-8')
-        elif menuSelection == '3':
-            msg = 'RBID'.encode('utf-8')
-
-        try:
-            s.send(msg)
-        except:
-            print("Error while sending a request")
-
-        # Wait for the message.
-        try:
-            dataReceived, addr = s.recvfrom(1024)
-            print("Received data from",addr," : ",dataReceived) #addr doesnt work.
-            # data_unpack = unpack("fffI",data)
-            # print("received message: ",data_unpack)
-        except:
-            pass
-        try:
+    while True:
+        menuSelection = menu()
+        if menuSelection != '1' and menuSelection != '2' and menuSelection != '3':
+            print("Choose a real option dumbass")
+        else:
             if menuSelection == '1':
-                data_unpack = unpack("fffx",dataReceived)
-            if menuSelection == '2':
-                data_unpack = unpack("Ixxx",dataReceived)
-            if menuSelection == '3':
-                data_unpack = unpack("Ixxx",dataReceived)
-            print("received message: ",data_unpack)
-        except:
-            print("Error while depacking.")
+                msg = 'RPOS'.encode('utf-8')
+            elif menuSelection == '2':
+                msg = 'OBSF'.encode('utf-8')
+            elif menuSelection == '3':
+                msg = 'RBID'.encode('utf-8')
+
+            try:
+                s.send(msg)
+            except:
+                print("Error while sending a request")
+
+            # Wait for the message.
+            try:
+                dataReceived, addr = s.recvfrom(1024)
+                print("Received data from",addr," : ",dataReceived) #addr doesnt work.
+                # data_unpack = unpack("fffI",data)
+                # print("received message: ",data_unpack)
+            except:
+                pass
+            try:
+                if menuSelection == '1':
+                    data_unpack = unpack("fffx",dataReceived)
+                if menuSelection == '2':
+                    data_unpack = unpack("Ixxx",dataReceived)
+                if menuSelection == '3':
+                    data_unpack = unpack("Ixxx",dataReceived)
+                print("received message: ",data_unpack)
+            except:
+                print("Error while depacking.")
 

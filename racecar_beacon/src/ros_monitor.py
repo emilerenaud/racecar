@@ -68,7 +68,7 @@ class ROSMonitor:
                 conn.send(self.obstacle)
             elif data.decode("utf_8") == "RBID":
                 conn.send(pack("Ixxx",self.id))
-        conn.close() 
+        # conn.close() 
             
     def quaternion_to_yaw(quat):
     # Uses TF transforms to convert a quaternion to a rotation angle around Z.
