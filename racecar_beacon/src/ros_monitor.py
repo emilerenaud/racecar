@@ -45,8 +45,6 @@ class ROSMonitor:
             pass
 
     def pb_loop(self):
-        msgFromClient       = "MSG From ros_monitor"
-        bytesToSend         = str.encode(msgFromClient)
         self.pb_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)       # socket UDP
         self.pb_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)    # Broadcast mode
         self.pb_socket.settimeout(0.2)
@@ -55,9 +53,6 @@ class ROSMonitor:
             self.pb_socket.sendto(message, ('<broadcast>', 37020))
             print("message sent!")
             time.sleep(1)
-        # while True:
-            # self.pb_socket.sendto(bytesToSend, ('127.0.0.1',20001))
-            # pass
 
     def quaternion_to_yaw(quat):
     # Uses TF transforms to convert a quaternion to a rotation angle around Z.
