@@ -43,9 +43,9 @@ if __name__=="__main__":
     else:
         if menuSelection == '1':
             msg = 'RPOS'.encode('utf-8')
-        if menuSelection == '2':
+        elif menuSelection == '2':
             msg = 'OBSF'.encode('utf-8')
-        if menuSelection == '3':
+        elif menuSelection == '3':
             msg = 'RBID'.encode('utf-8')
 
         try:
@@ -61,12 +61,14 @@ if __name__=="__main__":
             # print("received message: ",data_unpack)
         except:
             pass
+        try:
+            if menuSelection == '1':
+                data_unpack = unpack("fffI",dataReceived)
+            if menuSelection == '2':
+                data_unpack = unpack("fffI",dataReceived)
+            if menuSelection == '3':
+                data_unpack = unpack("fffI",dataReceived)
+            print("received message: ",data_unpack)
+        except:
+            print("Error while depacking.")
 
-        if menuSelection == '1':
-            data_unpack = unpack("fffI",dataReceived)
-        if menuSelection == '2':
-            data_unpack = unpack("fffI",dataReceived)
-        if menuSelection == '3':
-            data_unpack = unpack("fffI",dataReceived)
-            
-        print("received message: ",data_unpack)
