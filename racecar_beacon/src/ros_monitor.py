@@ -8,6 +8,7 @@ import threading
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
 from tf.transformations import euler_from_quaternion
+from struct import *
 
 
 class ROSMonitor:
@@ -17,9 +18,9 @@ class ROSMonitor:
         self.sub_laser = rospy.Subscriber("/scan", LaserScan, self.scan_laser)
         self.sub_odom = rospy.Subscriber("/odometry/filtered", Odometry, self.scan_odom)
         # Current robot state:
-        self.id = 0xFFFF
-        self.pos = (0,0,0)
-        self.obstacle = False
+        self.id = pack("Ixxx",0xFFFF)
+        self.pos = 0
+        self.obstacle = pack("Ixxx",0)
 
         # Params :
         self.remote_request_port = rospy.get_param("remote_request_port", 65432)
@@ -47,15 +48,18 @@ class ROSMonitor:
         # print(msg.ranges)
         rangesValues = msg.ranges
         for data in rangesValues:
-            if data < 0.5:
+            if data < 1:
                 print("Data",data)
+                self.obstacle = pack("Ixxx",1)
+
         
         # pass
 
     def scan_odom(self,msg):
         print('X: ',msg.pose.pose.position.x)
-        # formatage peut-etre pas selon le guide.
-        self.pos = (msg.pose.pose.position.x,msg.pose.pose.position.y,quaternion_to_yaw(msg.pose.pose.orientation))
+        print('Y: ',msg.pose.pose.position.y)
+        print('Theta: ',quaternion_to_yaw(msg.pose.pose.orientation))
+        self.pos = pack("fffx",msg.pose.pose.position.x,msg.pose.pose.position.y,quaternion_to_yaw(msg.pose.pose.orientation))
         
 
 
