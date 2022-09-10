@@ -27,12 +27,19 @@ class ROSMonitor:
 
         # Thread for RemoteRequest handling:
         self.rr_thread = threading.Thread(target=self.rr_loop)
-
+        self.pb_thread = threading.Thread(target=self.pb_loop)
         print("ROSMonitor started.")
 
     def rr_loop(self):
         # Init your socket here :
         # self.rr_socket = socket.Socket(...)
+        while True:
+            pass
+
+    def pb_loop(self):
+        self.pb_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)       # socket UDP
+        self.pb_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)    # Broadcast mode
+        
         while True:
             pass
 
