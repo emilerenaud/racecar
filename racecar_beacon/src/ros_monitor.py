@@ -44,13 +44,19 @@ class ROSMonitor:
         return yaw
 
     def scan_laser(self,msg):
-        pass
+        # print(msg.ranges)
+        rangesValues = msg.ranges
+        for data in rangesValues:
+            if data < 0.5:
+                print("Data",data)
+        
+        # pass
 
     def scan_odom(self,msg):
         print('X: ',msg.pose.pose.position.x)
-        self.pos[0] = msg.pose.pose.position.x
-        self.pos[1] = msg.pose.pose.position.y
-        self.pos[2] = quaternion_to_yaw(self.pose.pose.orientation)
+        # self.pos[0] = msg.pose.pose.position.x
+        # self.pos[1] = msg.pose.pose.position.y
+        # self.pos[2] = quaternion_to_yaw(self.pose.pose.orientation)
 
 
 if __name__=="__main__":
