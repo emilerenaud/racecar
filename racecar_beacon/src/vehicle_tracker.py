@@ -20,5 +20,6 @@ if __name__=="__main__":
     while True:
         # Thanks @seym45 for a fix
         data, addr = client.recvfrom(1024)
-        print("received message: %s"%data)
+        data_unpack = unpack("fffx",data)
+        print("received message: ",data_unpack)
 
