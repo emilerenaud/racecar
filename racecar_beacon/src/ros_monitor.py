@@ -32,9 +32,14 @@ class ROSMonitor:
         self.rr_thread = threading.Thread(target=self.rr_loop)
         self.rr_thread.daemon = True
         self.rr_thread.start()
-        self.pb_thread = threading.Thread(target=self.pb_loop)
-        self.pb_thread.daemon = True
-        self.pb_thread.start()
+
+        # check time at the begenning for non-blocking 1Hz
+        self.startTime_pb = time.time()
+
+        # Create socket UDP for positionBroadcast
+        self.pb_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)       # socket UDP
+        self.pb_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)    # Broadcast mode
+        self.pb_socket.settimeout(0.2)
 
         print("ROSMonitor started.")
 
@@ -44,17 +49,7 @@ class ROSMonitor:
         while True:
             # print('test')
             pass
-
-    def pb_loop(self):
-        self.pb_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)       # socket UDP
-        self.pb_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)    # Broadcast mode
-        self.pb_socket.settimeout(0.2)
-        message = b"your very important message"
-        while True:
-            self.pb_socket.sendto(message, ('<broadcast>', self.pos_broadcast_port))
-            print("message sent!")
-            time.sleep(1)
-
+            
     def quaternion_to_yaw(quat):
     # Uses TF transforms to convert a quaternion to a rotation angle around Z.
     # Usage with an Odometry message: 
@@ -67,17 +62,23 @@ class ROSMonitor:
         rangesValues = msg.ranges
         for data in rangesValues:
             if data < 1:
-                print("Data",data)
+                # print("Data",data)
                 self.obstacle = pack("Ixxx",1)
 
         
         # pass
 
     def scan_odom(self,msg):
-        print('X: ',msg.pose.pose.position.x)
-        print('Y: ',msg.pose.pose.position.y)
-        print('Theta: ',quaternion_to_yaw(msg.pose.pose.orientation))
+        # print('X: ',msg.pose.pose.position.x)
+        # print('Y: ',msg.pose.pose.position.y)
+        # print('Theta: ',quaternion_to_yaw(msg.pose.pose.orientation))
         self.pos = pack("fffx",msg.pose.pose.position.x,msg.pose.pose.position.y,quaternion_to_yaw(msg.pose.pose.orientation))
+
+        # check if 1 second is elapsed and send data.
+        if (time.time() - self.startTime_pb >= 1):
+            self.pb_socket.sendto(self.pos, ('<broadcast>', self.pos_broadcast_port))
+            # print("message sent!", time.time())
+            self.startTime_pb = time.time()
         
 
 
