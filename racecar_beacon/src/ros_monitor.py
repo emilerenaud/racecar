@@ -8,7 +8,7 @@ import threading
 # from sensor_msgs.msg import LaserScan
 
 # GLOBAL CONSTANTS
-HEADER = 512 # réponse de 16 octets, donc
+HEADER = 128  # réponse de 16 octets, donc 128 bits
 FORMAT = "utf-8"
 DISCONNECT_MESSAGE = "!DISCONNECT"
 MAX_CONNECTIONS = 10
@@ -17,13 +17,13 @@ MAX_CONNECTIONS = 10
 
 REMOTE_REQUEST_PORT = 65432
 REMOTE_REQUEST_HOST = socket.gethostbyname(socket.gethostname())
-REMOTE_REQUEST_ADDR = (REMOTE_REQUEST_HOST , REMOTE_REQUEST_PORT)
+REMOTE_REQUEST_ADDR = (REMOTE_REQUEST_HOST, REMOTE_REQUEST_PORT)
 
 # GLOBAL POS BROADCAST CONSTANTS
 
 POS_BROADCAST_PORT = 65431
 POS_BROADCAST_HOST = "??"
-POS_BROADCAST_ADDR = (REMOTE_REQUEST_HOST , REMOTE_REQUEST_PORT)
+POS_BROADCAST_ADDR = (REMOTE_REQUEST_HOST, REMOTE_REQUEST_PORT)
 
 # SERVER CREATION
 
@@ -47,7 +47,7 @@ class ROSMonitor:
 
         # Current robot state:
         self.id = 0xFFFF
-        self.pos = (0,0,0)
+        self.pos = (0, 0, 0)
         self.obstacle = False
 
         # Params :
@@ -57,8 +57,8 @@ class ROSMonitor:
         print("ROSMonitor started.")
 
         # Thread for RemoteRequest handling:
-        self.rr_thread = threading.Thread(target=self.wait_for_connection).start()
-
+        self.rr_thread = threading.Thread(
+            target=self.wait_for_connection).start()
 
     def wait_for_connection(self):
 
@@ -73,42 +73,57 @@ class ROSMonitor:
 
                 print(f"[CONNECTION] {addr} connected to the server")
 
-                thread = threading.Thread(target=self.handle_client, args=(socket, addr)).start()
-                print(f"[ACTIVE CONNECTIONS] {threading.active_count() - 1}") ######### À revérifier
+                thread = threading.Thread(
+                    target=self.handle_client, args=(socket, addr)).start()
+                # À revérifier
+                print(f"[ACTIVE CONNECTIONS] {threading.active_count() - 1}")
 
             except Exception as e:
                 print("[EXCEPTION]", e)
                 break
-        
+
         print("SERVER CRASHED")
 
     def handle_client(self, socket, addr):
 
-        socket.send("[CONNECTION] Connection to ROSMonitor sucessful:\n\n".encode(FORMAT))
-        socket.send("What ASCII command to retreive info:\n1.RPOS\n2.OBSF\n3.RBID\n".encode(FORMAT))
+        socket.send(
+            "[CONNECTION] Connection to ROSMonitor sucessful:\n\n".encode(FORMAT))
+        socket.send(
+            "What ASCII command to retreive info:\n1.RPOS\n2.OBSF\n3.RBID\n".encode(FORMAT))
 
         while True:
-            msg_length = socket.recv(HEADER).decode(FORMAT)# Get the size of the message we want to receive
+            # Get the size of the message we want to receive
+            msg_length = socket.recv(HEADER).decode(FORMAT)
             if msg_length:
                 msg_length = int(msg_length)
-                msg = socket.recv(msg_length).decode(FORMAT)# Get message of good size( not more or less )
-                if msg == DISCONNECT_MESSAGE:
+                # Get message of good size( not more or less )
 
-                    print(f"[DISCONNECTION] {addr} disconnected from the server")
-                    socket.close()
-                    print(f"[ACTIVE CONNECTIONS] {threading.active_count() - 2}") ######### À revérifier
-                    break
+                if msg_length == HEADER:
 
-                print(f"[{addr}] {msg}")
-                socket.send("What ASCII command to retreive info:\n1.RPOS\n2.OBSF\n3.RBID\n".encode(FORMAT))
-                
+                    msg = socket.recv(msg_length).decode(FORMAT)
+
+                    if msg == DISCONNECT_MESSAGE:
+
+                        print(
+                            f"[DISCONNECTION] {addr} disconnected from the server")
+                        socket.close()
+                        # À revérifier
+                        print(
+                            f"[ACTIVE CONNECTIONS] {threading.active_count() - 2}")
+                        break
+
+                    print(f"[{addr}] {msg}")
+                    socket.send(
+                        "What ASCII command to retreive info:\n1.RPOS\n2.OBSF\n3.RBID\n".encode(FORMAT))
+
+                else:
+                    socket.send(
+                        "HEADER_FLAG".encode(FORMAT))
 
 
-if __name__=="__main__":
+if __name__ == "__main__":
     # rospy.init_node("ros_monitor")
 
     node = ROSMonitor()
 
     # rospy.spin()
-
-
