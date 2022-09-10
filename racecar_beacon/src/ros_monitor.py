@@ -20,7 +20,7 @@ class ROSMonitor:
         self.sub_laser = rospy.Subscriber("/scan", LaserScan, self.scan_laser)
         self.sub_odom = rospy.Subscriber("/odometry/filtered", Odometry, self.scan_odom)
         # Current robot state:
-        self.id = pack("Ixxx",0xFFFF)
+        self.id = 0xFFFF
         self.pos = 0
         self.obstacle = pack("Ixxx",0)
 
@@ -73,10 +73,10 @@ class ROSMonitor:
         # print('Y: ',msg.pose.pose.position.y)
         # print('Theta: ',quaternion_to_yaw(msg.pose.pose.orientation))
         self.pos = pack("fffx",msg.pose.pose.position.x,msg.pose.pose.position.y,quaternion_to_yaw(msg.pose.pose.orientation))
-
+        positionTemp = pack("fffI",msg.pose.pose.position.x,msg.pose.pose.position.y,quaternion_to_yaw(msg.pose.pose.orientation),self.id)
         # check if 1 second is elapsed and send data.
         if (time.time() - self.startTime_pb >= 1):
-            self.pb_socket.sendto(self.pos, ('<broadcast>', self.pos_broadcast_port))
+            self.pb_socket.sendto(positionTemp, ('<broadcast>', self.pos_broadcast_port))
             # print("message sent!", time.time())
             self.startTime_pb = time.time()
         
