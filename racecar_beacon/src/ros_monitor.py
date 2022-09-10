@@ -62,11 +62,11 @@ class ROSMonitor:
 
             if not data:
                 break
-            elif data.decode("uint_8") == "RPOS":
+            elif data.decode("utf_8") == "RPOS":
                 conn.send(self.pos)
-            elif data.decode("uint_8") == "OBSF":
+            elif data.decode("utf_8") == "OBSF":
                 conn.send(self.obstacle)
-            elif data.decode("uint_8") == "RBID":
+            elif data.decode("utf_8") == "RBID":
                 conn.send(pack("Ixxx",self.id))
         conn.close() 
             

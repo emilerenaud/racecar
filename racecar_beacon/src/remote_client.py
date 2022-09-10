@@ -63,11 +63,11 @@ if __name__=="__main__":
             pass
         try:
             if menuSelection == '1':
-                data_unpack = unpack("fffI",dataReceived)
+                data_unpack = unpack("fffx",dataReceived)
             if menuSelection == '2':
-                data_unpack = unpack("fffI",dataReceived)
+                data_unpack = unpack("Ixxx",dataReceived)
             if menuSelection == '3':
-                data_unpack = unpack("fffI",dataReceived)
+                data_unpack = unpack("Ixxx",dataReceived)
             print("received message: ",data_unpack)
         except:
             print("Error while depacking.")
