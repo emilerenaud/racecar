@@ -50,7 +50,7 @@ class ROSMonitor:
         self.pb_socket.settimeout(0.2)
         message = b"your very important message"
         while True:
-            self.pb_socket.sendto(message, ('<broadcast>', 37020))
+            self.pb_socket.sendto(message, ('<broadcast>', self.pos_broadcast_port))
             print("message sent!")
             time.sleep(1)
 
