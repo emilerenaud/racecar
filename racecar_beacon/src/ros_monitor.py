@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 
+from operator import truediv
 from lab_poll_pos import quaternion_to_yaw
 import rospy
 import socket
 import threading
+import time
 
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
@@ -27,21 +29,35 @@ class ROSMonitor:
 
         # Thread for RemoteRequest handling:
         self.rr_thread = threading.Thread(target=self.rr_loop)
+        self.rr_thread.daemon = True
+        self.rr_thread.start()
         self.pb_thread = threading.Thread(target=self.pb_loop)
+        self.pb_thread.daemon = True
+        self.pb_thread.start()
+
         print("ROSMonitor started.")
 
     def rr_loop(self):
         # Init your socket here :
         # self.rr_socket = socket.Socket(...)
         while True:
+            # print('test')
             pass
 
     def pb_loop(self):
+        msgFromClient       = "MSG From ros_monitor"
+        bytesToSend         = str.encode(msgFromClient)
         self.pb_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)       # socket UDP
         self.pb_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)    # Broadcast mode
-        
+        self.pb_socket.settimeout(0.2)
+        message = b"your very important message"
         while True:
-            pass
+            self.pb_socket.sendto(message, ('<broadcast>', 37020))
+            print("message sent!")
+            time.sleep(1)
+        # while True:
+            # self.pb_socket.sendto(bytesToSend, ('127.0.0.1',20001))
+            # pass
 
     def quaternion_to_yaw(quat):
     # Uses TF transforms to convert a quaternion to a rotation angle around Z.
@@ -55,12 +71,13 @@ class ROSMonitor:
         rangesValues = msg.ranges
         for data in rangesValues:
             if data < 0.5:
-                print("Data",data)
+                # print("Data",data)
+                pass
         
         # pass
 
     def scan_odom(self,msg):
-        print('X: ',msg.pose.pose.position.x)
+        # print('X: ',msg.pose.pose.position.x)
         # formatage peut-etre pas selon le guide.
         self.pos = (msg.pose.pose.position.x,msg.pose.pose.position.y,quaternion_to_yaw(msg.pose.pose.orientation))
         
