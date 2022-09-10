@@ -15,7 +15,7 @@ def quaternion_to_yaw(quat):
 class PosPoll:
     def __init__(self):
         # Add your subscribers to the class instance here, ex. :
-        # self.sub_laser = rospy.Subscriber("/scan", LaserScan, self.scan_cb)
+        self.sub_laser = rospy.Subscriber("/scan", LaserScan, self.scan_cb)
         print("pos_poll node started.")
 
         # Creates a ROS Timer that will call the timer_cb method every 1.0 sec:
@@ -26,8 +26,9 @@ class PosPoll:
         print("Timer event.")
 
     # Subscriber callback:
-    # def scan_cb(self, msg):
-    #   print("Got msg from /scan")
+    def scan_cb(self, msg):
+      print("Got msg from /scan")
+      
 
 if __name__ == "__main__":
     rospy.init_node("pos_poll")

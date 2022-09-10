@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 
+from operator import truediv
 from lab_poll_pos import quaternion_to_yaw
 import rospy
 import socket
 import threading
+import time
 
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
@@ -28,6 +30,11 @@ class ROSMonitor:
 
         # Thread for RemoteRequest handling:
         self.rr_thread = threading.Thread(target=self.rr_loop)
+        self.rr_thread.daemon = True
+        self.rr_thread.start()
+        self.pb_thread = threading.Thread(target=self.pb_loop)
+        self.pb_thread.daemon = True
+        self.pb_thread.start()
 
         print("ROSMonitor started.")
 
@@ -35,7 +42,18 @@ class ROSMonitor:
         # Init your socket here :
         # self.rr_socket = socket.Socket(...)
         while True:
+            # print('test')
             pass
+
+    def pb_loop(self):
+        self.pb_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)       # socket UDP
+        self.pb_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)    # Broadcast mode
+        self.pb_socket.settimeout(0.2)
+        message = b"your very important message"
+        while True:
+            self.pb_socket.sendto(message, ('<broadcast>', self.pos_broadcast_port))
+            print("message sent!")
+            time.sleep(1)
 
     def quaternion_to_yaw(quat):
     # Uses TF transforms to convert a quaternion to a rotation angle around Z.
