@@ -3,6 +3,7 @@
 import socket
 import threading
 import time
+from struct import *
 
 HOST = '127.0.0.1'
 
