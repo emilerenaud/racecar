@@ -30,7 +30,7 @@ while True:
     data = conn.recv(1024)
 
     if  not data :
-        None
+        break
     else:
         print(data)
         conn.send(data)
