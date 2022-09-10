@@ -54,9 +54,9 @@ class ROSMonitor:
 
     def scan_odom(self,msg):
         print('X: ',msg.pose.pose.position.x)
-        # self.pos[0] = msg.pose.pose.position.x
-        # self.pos[1] = msg.pose.pose.position.y
-        # self.pos[2] = quaternion_to_yaw(self.pose.pose.orientation)
+        # formatage peut-etre pas selon le guide.
+        self.pos = (msg.pose.pose.position.x,msg.pose.pose.position.y,quaternion_to_yaw(msg.pose.pose.orientation))
+        
 
 
 if __name__=="__main__":
