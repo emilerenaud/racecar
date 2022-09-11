@@ -31,6 +31,7 @@ if __name__=="__main__":
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((IP_SERVER, PORT))
         s.settimeout(1)
+        # print(socket.gethostname())
         print('Connected to the server')
     except:
         print('Error while connecting with the server')

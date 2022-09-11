@@ -2,6 +2,7 @@
 
 from base64 import encode
 from operator import truediv
+# from winreg import REG_RESOURCE_LIST
 from lab_poll_pos import quaternion_to_yaw
 import rospy
 import socket
@@ -47,28 +48,43 @@ class ROSMonitor:
         print("ROSMonitor started.")
 
     def rr_loop(self):
-        # Init your socket here :
-        # self.rr_socket = socket.Socket(...)
-        self.rr_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        try:
-            self.rr_socket.bind((HOST, PORT))
-            self.rr_socket.listen(2)
-        except:
-            print("erreur while bind or listen")
-
-        (conn,addr) = self.rr_socket.accept()
         while True:
-            data = conn.recv(1024)
+            # Init your socket here :
+            # self.rr_socket = socket.Socket(...)
+            self.rr_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            try:
+                self.rr_socket.bind((HOST, PORT))
+                self.rr_socket.listen(1)
+            except:
+                print("erreur while bind or listen")
 
-            if not data:
-                break
-            elif data.decode("utf_8") == "RPOS":
-                conn.send(self.pos)
-            elif data.decode("utf_8") == "OBSF":
-                conn.send(self.obstacle)
-            elif data.decode("utf_8") == "RBID":
-                conn.send(pack("Ixxx",self.id))
-        # conn.close() 
+            try:
+                (conn,addr) = self.rr_socket.accept()
+                while True:
+                    data = conn.recv(1024).decode('utf-8')
+
+                    try:
+                        if not data:
+                            break
+                        elif data == "RPOS":
+                            conn.send(self.pos)
+                        elif data == "OBSF":
+                            conn.send(self.obstacle)
+                        elif data == "RBID":
+                            conn.send(pack("Ixxx",self.id))
+                    except:
+                        print("Error while sending data.")
+
+                conn.close()
+                self.rr_socket.close()
+            # print(socket.gethostname())
+            except:
+                # print("Timeout kinda")
+                pass
+                
+            
+            # self.rr_socket.close()
+            # print("conn close.") 
             
     def quaternion_to_yaw(quat):
     # Uses TF transforms to convert a quaternion to a rotation angle around Z.
