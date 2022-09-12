@@ -5,7 +5,7 @@ import threading
 import time
 from struct import *
 
-HOST = '127.0.0.1'
+HOST = '10.0.0.1'
 
 # This process should listen to a different port than the RemoteRequest client.
 PORT = 65431
@@ -17,10 +17,11 @@ if __name__=="__main__":
 # Enable broadcasting mode
     client.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
-    client.bind(("", PORT))
+    client.bind(('', PORT))
     while True:
         # Thanks @seym45 for a fix
         data, addr = client.recvfrom(1024)
-        data_unpack = unpack("fffI",data)
-        print("received message: ",data_unpack)
+        (x,y,z,id) = unpack("fffI",data)
+        print("Position received from : ",addr[0]," X: ",x, " Y: ",y," Z: ",z)
+        # print(addr[0])
 
