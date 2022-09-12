@@ -1,16 +1,20 @@
 #!/usr/bin/env python
 
-# import rospy
+import rospy
+import roslaunch
 import socket
 import threading
+import time
 
-# from nav_msgs.msg import Odometry
-# from sensor_msgs.msg import LaserScan
+from struct import *
+from nav_msgs.msg import Odometry
+from sensor_msgs.msg import LaserScan
+from tf.transformations import euler_from_quaternion
 
 # GLOBAL CONSTANTS
 HEADER = 128  # réponse de 16 octets, donc 128 bits
 FORMAT = "utf-8"
-DISCONNECT_MESSAGE = "!DISCONNECT"
+DISCONNECT_MESSAGE = "DISCONNECT"
 MAX_CONNECTIONS = 10
 
 # GLOBAL REMOTE REQUEST CONSTANTS
@@ -22,8 +26,7 @@ REMOTE_REQUEST_ADDR = (REMOTE_REQUEST_HOST, REMOTE_REQUEST_PORT)
 # GLOBAL POS BROADCAST CONSTANTS
 
 POS_BROADCAST_PORT = 65431
-POS_BROADCAST_HOST = "??"
-POS_BROADCAST_ADDR = (REMOTE_REQUEST_HOST, REMOTE_REQUEST_PORT)
+POS_BROADCAST_HOST = "127.0.1.255"
 
 # SERVER CREATION
 
@@ -33,22 +36,29 @@ POS_BROADCAST_ADDR = (REMOTE_REQUEST_HOST, REMOTE_REQUEST_PORT)
 REMOTE_REQUEST_SERVER = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 REMOTE_REQUEST_SERVER.bind(REMOTE_REQUEST_ADDR)
 
-POS_BROADCAST_SERVER = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+POS_BROADCAST_SERVER = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
 POS_BROADCAST_SERVER.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-POS_BROADCAST_SERVER.bind(POS_BROADCAST_ADDR)
 
+def quaternion_to_yaw(quat):
+    # Uses TF transforms to convert a quaternion to a rotation angle around Z.
+    # Usage with an Odometry message: 
+    #   yaw = quaternion_to_yaw(msg.pose.pose.orientation)
+    (roll, pitch, yaw) = euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])
+    return yaw
 
 class ROSMonitor:
 
     def __init__(self):
         # Add your subscriber here (odom? laserscan?):
-        # self.sub_odom = rospy.Subcriber(...)
+        self.sub_odom = rospy.Subscriber("/odometry/filtered", Odometry, self.odom_cb)
         # self.sub_laser = rospy.Subscriber(...)
 
         # Current robot state:
-        self.id = 0xFFFF
+        self.id = REMOTE_REQUEST_HOST
         self.pos = (0, 0, 0)
         self.obstacle = False
+        self.rate = rospy.Rate(1)
+
 
         # Params :
         # self.remote_request_port = rospy.get_param("remote_request_port", REMOTE_REQUEST_PORT)
@@ -58,9 +68,65 @@ class ROSMonitor:
 
         # Thread for RemoteRequest handling:
         self.rr_thread = threading.Thread(
-            target=self.wait_for_connection).start()
+            target=self.wait_for_connection, daemon = True).start()
+
+        # Thread for VehicleTracking handling:
+        self.vt_thread = threading.Thread(
+            target=self.broadcast, args = (self.rate,), daemon = True).start()
+
+
+    """
+    .########..########...#######.....###....########...######.....###.....######..########
+    .##.....##.##.....##.##.....##...##.##...##.....##.##....##...##.##...##....##....##...
+    .##.....##.##.....##.##.....##..##...##..##.....##.##........##...##..##..........##...
+    .########..########..##.....##.##.....##.##.....##.##.......##.....##..######.....##...
+    .##.....##.##...##...##.....##.#########.##.....##.##.......#########.......##....##...
+    .##.....##.##....##..##.....##.##.....##.##.....##.##....##.##.....##.##....##....##...
+    .########..##.....##..#######..##.....##.########...######..##.....##..######.....##...
+    """
+    
+    def odom_cb(self, msg):
+        """Feeds ros_monitor node odometry position to self.pos
+
+        Args:
+            msg (Odometry): Gets message as subscriber of "/odometry/filtered" topic
+        """
+
+        yaw = quaternion_to_yaw(msg.pose.pose.orientation)
+        self.pos = (msg.pose.pose.position.x,msg.pose.pose.position.y,yaw)
+
+    def broadcast(self, rate):
+        """Broadcast vehicle position and server IP 
+
+        Args:
+            rate (rospy.Rate): Send a message every 1Hz
+        """        
+
+        print(f"[BROADCAST] Server is broadcasting on {POS_BROADCAST_HOST}")
+
+        while True:
+
+            msg = pack(">fffi",self.pos[0],self.pos[1],self.pos[2],self.id)
+            POS_BROADCAST_SERVER.sendto(msg, (POS_BROADCAST_HOST, POS_BROADCAST_PORT ))
+            rate.sleep()
+
+    """
+    ..######..##.......####.########.##....##.########
+    .##....##.##........##..##.......###...##....##...
+    .##.......##........##..##.......####..##....##...
+    .##.......##........##..######...##.##.##....##...
+    .##.......##........##..##.......##..####....##...
+    .##....##.##........##..##.......##...###....##...
+    ..######..########.####.########.##....##....##...
+    """
 
     def wait_for_connection(self):
+
+        """
+        Waits for client to connect to server, then starts a thread to handle client messages when connected
+        """
+
+        self.id = unpack("!i", socket.inet_aton(REMOTE_REQUEST_HOST))[0]
 
         REMOTE_REQUEST_SERVER.listen(MAX_CONNECTIONS)
 
@@ -68,62 +134,91 @@ class ROSMonitor:
 
         while True:
             try:
-                socket, addr = REMOTE_REQUEST_SERVER.accept()
-                self.id = addr
+                conn, addr = REMOTE_REQUEST_SERVER.accept()
 
                 print(f"[CONNECTION] {addr} connected to the server")
 
                 thread = threading.Thread(
-                    target=self.handle_client, args=(socket, addr)).start()
-                # À revérifier
-                print(f"[ACTIVE CONNECTIONS] {threading.active_count() - 1}")
+                    target=self.handle_client, args=(conn, addr), daemon= True).start()
+    
+                # print(f"[ACTIVE CONNECTIONS] {threading.active_count() - 1}")# À revérifier
 
             except Exception as e:
                 print("[EXCEPTION]", e)
                 break
 
         print("SERVER CRASHED")
+        socket.close()
 
     def handle_client(self, socket, addr):
+        """Handles the mesage received by the client
+
+        Args:
+            socket (socket): Has client info
+            addr (tuple(IP,port)): Has IP and port number to client connection
+        """
 
         socket.send(
-            "[CONNECTION] Connection to ROSMonitor sucessful:\n\n".encode(FORMAT))
+            "[CONNECTION] Connection to ROSMonitor sucessful:\n\nWhat ASCII command to retreive info:\n1.RPOS\n2.OBSF\n3.RBID\n".encode(FORMAT))
+
+        while True:
+
+            if not socket.timeout:
+                msg = socket.recv(HEADER).decode(FORMAT)
+            else:
+                print(f"[TIMEOUT] {addr} has timed out of the server")
+                break
+
+            if msg and msg != DISCONNECT_MESSAGE:
+                print(f"[{addr}] {msg}")
+                self.send_client(socket, msg)
+
+            elif msg == DISCONNECT_MESSAGE:
+
+                print(
+                    f"[DISCONNECTION] {addr} disconnected from the server")
+                socket.close()
+                # print(
+                #     f"[ACTIVE CONNECTIONS] {threading.active_count() - 3}")# À revérifier
+                break
+            
+    
+    def send_client(self,socket, msg):
+        """Send message back to client
+
+        Args:
+            socket (socket): Has client info
+            msg (string): Message that the client sent to server to get info
+        """
+
+        if msg == "RPOS":
+            msg = pack(">fffx",self.pos[0],self.pos[1],self.pos[2])
+
+        elif msg == "OBSF":
+
+            msg = pack(">ixxx", int(self.obstacle)) # BON nbre de x?
+
+        elif msg == "RBID":
+            msg = pack(">ixxx",self.id)
+
+        socket.send(msg)
+        time.sleep(0.1)
         socket.send(
             "What ASCII command to retreive info:\n1.RPOS\n2.OBSF\n3.RBID\n".encode(FORMAT))
 
-        while True:
-            # Get the size of the message we want to receive
-            msg_length = socket.recv(HEADER).decode(FORMAT)
-            if msg_length:
-                msg_length = int(msg_length)
-                # Get message of good size( not more or less )
-
-                if msg_length == HEADER:
-
-                    msg = socket.recv(msg_length).decode(FORMAT)
-
-                    if msg == DISCONNECT_MESSAGE:
-
-                        print(
-                            f"[DISCONNECTION] {addr} disconnected from the server")
-                        socket.close()
-                        # À revérifier
-                        print(
-                            f"[ACTIVE CONNECTIONS] {threading.active_count() - 2}")
-                        break
-
-                    print(f"[{addr}] {msg}")
-                    socket.send(
-                        "What ASCII command to retreive info:\n1.RPOS\n2.OBSF\n3.RBID\n".encode(FORMAT))
-
-                else:
-                    socket.send(
-                        "HEADER_FLAG".encode(FORMAT))
 
 
 if __name__ == "__main__":
-    # rospy.init_node("ros_monitor")
+
+    # uuid = roslaunch.rlutil.get_or_generate_uuid(options_runid=None, options_wait_for_master=False)
+    # roslaunch.configure_logging(uuid)
+    # launch = roslaunch.parent.ROSLaunchParent(uuid, roslaunch_files=[], is_core=True)
+    # launch.start()
+
+    rospy.init_node("ros_monitor")
 
     node = ROSMonitor()
 
-    # rospy.spin()
+    rospy.spin()
+    REMOTE_REQUEST_SERVER.close()
+    # launch.shutdown()
