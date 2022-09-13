@@ -17,16 +17,19 @@ FORMAT = "utf-8"
 DISCONNECT_MESSAGE = "DISCONNECT"
 MAX_CONNECTIONS = 10
 
+
 # GLOBAL REMOTE REQUEST CONSTANTS
 
 REMOTE_REQUEST_PORT = 65432
-REMOTE_REQUEST_HOST = socket.gethostbyname(socket.gethostname())
+# REMOTE_REQUEST_HOST = socket.gethostbyname(socket.gethostname())
+REMOTE_REQUEST_HOST = socket.gethostbyname(socket.gethostname()+".local")
 REMOTE_REQUEST_ADDR = (REMOTE_REQUEST_HOST, REMOTE_REQUEST_PORT)
 
 # GLOBAL POS BROADCAST CONSTANTS
 
+
 POS_BROADCAST_PORT = 65431
-POS_BROADCAST_HOST = "127.0.1.255"
+POS_BROADCAST_HOST = ""
 
 # SERVER CREATION
 
@@ -54,7 +57,7 @@ class ROSMonitor:
         # self.sub_laser = rospy.Subscriber(...)
 
         # Current robot state:
-        self.id = REMOTE_REQUEST_HOST
+        self.id = 0xFFFF
         self.pos = (0, 0, 0)
         self.obstacle = False
         self.rate = rospy.Rate(1)
@@ -66,6 +69,8 @@ class ROSMonitor:
 
         print("ROSMonitor started.")
 
+        self.get_site_number(REMOTE_REQUEST_HOST)
+
         # Thread for RemoteRequest handling:
         self.rr_thread = threading.Thread(
             target=self.wait_for_connection, daemon = True).start()
@@ -74,6 +79,16 @@ class ROSMonitor:
         self.vt_thread = threading.Thread(
             target=self.broadcast, args = (self.rate,), daemon = True).start()
 
+    def get_site_number(self, address_string):
+        global POS_BROADCAST_HOST
+        dot_counter = 0
+        site_number = ""
+        for character in address_string:
+            if dot_counter == 2 and character != ".":
+                site_number = site_number + character
+            if character == ".":
+                dot_counter = dot_counter + 1
+        POS_BROADCAST_HOST = "10.0."+ site_number+".255"
 
     """
     .########..########...#######.....###....########...######.....###.....######..########
@@ -127,10 +142,9 @@ class ROSMonitor:
         """
 
         self.id = unpack("!i", socket.inet_aton(REMOTE_REQUEST_HOST))[0]
-
         REMOTE_REQUEST_SERVER.listen(MAX_CONNECTIONS)
 
-        print(f"[LISTENING] Server is listenning on {REMOTE_REQUEST_HOST}")
+        print(f"[LISTENING] Server is listenning for client on {REMOTE_REQUEST_HOST}")
 
         while True:
             try:
