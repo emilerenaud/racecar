@@ -7,7 +7,6 @@ from struct import *
 
 HEADER = 128  # 16 octets x 8 = 128 bit message
 PORT = 65431
-FORMAT = 'utf-8'
 ADDR = ('', PORT)
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -15,6 +14,12 @@ sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 sock.bind(ADDR)
 
 def connection():
+
+    """
+    Start the listening for Ros_Monitor broadcast
+    """    
+
+    print(f" Vehicle tracker started listening on {ADDR[0]}")
 
     while True:
         try:

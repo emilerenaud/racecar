@@ -17,16 +17,13 @@ FORMAT = "utf-8"
 DISCONNECT_MESSAGE = "DISCONNECT"
 MAX_CONNECTIONS = 10
 
-
 # GLOBAL REMOTE REQUEST CONSTANTS
 
 REMOTE_REQUEST_PORT = 65432
-# REMOTE_REQUEST_HOST = socket.gethostbyname(socket.gethostname())
-REMOTE_REQUEST_HOST = socket.gethostbyname(socket.gethostname()+".local")
+REMOTE_REQUEST_HOST = socket.gethostbyname(socket.gethostname()+".local") #Put 10.0.0.1 if doesnt work
 REMOTE_REQUEST_ADDR = (REMOTE_REQUEST_HOST, REMOTE_REQUEST_PORT)
 
-# GLOBAL POS BROADCAST CONSTANTS
-
+# GLOBAL POS_BROADCAST CONSTANTS
 
 POS_BROADCAST_PORT = 65431
 POS_BROADCAST_HOST = ""
@@ -36,7 +33,7 @@ POS_BROADCAST_HOST = ""
 # socket.AF_INET means we're using IPv4 ( IP version 4 )
 # socket.SOCK_STREAM means we're using TCP protocol for data transfer
 
-REMOTE_REQUEST_SERVER = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+REMOTE_REQUEST_SERVER = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
 REMOTE_REQUEST_SERVER.bind(REMOTE_REQUEST_ADDR)
 
 POS_BROADCAST_SERVER = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
@@ -53,8 +50,8 @@ class ROSMonitor:
 
     def __init__(self):
         # Add your subscriber here (odom? laserscan?):
-        self.sub_odom = rospy.Subscriber("/odometry/filtered", Odometry, self.odom_cb)
-        # self.sub_laser = rospy.Subscriber(...)
+        self.sub_odom = rospy.Subscriber("/racecar/odometry/filtered", Odometry, self.odom_cb)
+        self.sub_laser = rospy.Subscriber("/racecar/scan", LaserScan, self.laser_cb)
 
         # Current robot state:
         self.id = 0xFFFF
@@ -80,6 +77,13 @@ class ROSMonitor:
             target=self.broadcast, args = (self.rate,), daemon = True).start()
 
     def get_site_number(self, address_string):
+
+        """Gets site number to broadcast to good IP
+
+        Args:
+            address_string (string): Gets REMOTE_REQUEST host IP
+        """   
+
         global POS_BROADCAST_HOST
         dot_counter = 0
         site_number = ""
@@ -109,6 +113,21 @@ class ROSMonitor:
 
         yaw = quaternion_to_yaw(msg.pose.pose.orientation)
         self.pos = (msg.pose.pose.position.x,msg.pose.pose.position.y,yaw)
+        
+    def laser_cb(self,msg):
+        """Feeds ros_monitor node  scan for the self.obstacle
+
+        Args:
+            msg (LaserScan): Gets message as subscriber of "/rate" topic
+        """
+
+        rangesValues = msg.ranges
+        for data in rangesValues:
+            if data < 1:
+                self.obstacle = 1
+                break
+            else:
+                self.obstacle = 0
 
     def broadcast(self, rate):
         """Broadcast vehicle position and server IP 
@@ -150,13 +169,11 @@ class ROSMonitor:
             try:
                 conn, addr = REMOTE_REQUEST_SERVER.accept()
 
-                print(f"[CONNECTION] {addr} connected to the server")
+                print(f"[CONNECTION] {addr[0]} connected to the server")
 
                 thread = threading.Thread(
                     target=self.handle_client, args=(conn, addr), daemon= True).start()
     
-                # print(f"[ACTIVE CONNECTIONS] {threading.active_count() - 1}")# À revérifier
-
             except Exception as e:
                 print("[EXCEPTION]", e)
                 break
@@ -173,17 +190,18 @@ class ROSMonitor:
         """
 
         socket.send(
-            "[CONNECTION] Connection to ROSMonitor sucessful:\n\nWhat ASCII command to retreive info:\n1.RPOS\n2.OBSF\n3.RBID\n".encode(FORMAT))
+            "[CONNECTION] Connection to ROSMonitor sucessful:\n".encode(FORMAT))
 
         while True:
 
-            if not socket.timeout:
+            try:
                 msg = socket.recv(HEADER).decode(FORMAT)
-            else:
-                print(f"[TIMEOUT] {addr} has timed out of the server")
+            except:
+                print(f"[TIMEOUT] {addr[0]} has timed out from the server")
+                socket.close()
                 break
 
-            if msg and msg != DISCONNECT_MESSAGE:
+            if (msg == "RPOS" or msg == "OBSF" or msg == "RBID"):
                 print(f"[{addr}] {msg}")
                 self.send_client(socket, msg)
 
@@ -192,9 +210,13 @@ class ROSMonitor:
                 print(
                     f"[DISCONNECTION] {addr} disconnected from the server")
                 socket.close()
-                # print(
-                #     f"[ACTIVE CONNECTIONS] {threading.active_count() - 3}")# À revérifier
                 break
+
+            else:
+                socket.send(
+            "[ERROR] Can't send this message. Try again\n".encode(FORMAT))
+
+
             
     
     def send_client(self,socket, msg):
@@ -214,20 +236,12 @@ class ROSMonitor:
 
         elif msg == "RBID":
             msg = pack(">ixxx",self.id)
-
+        
         socket.send(msg)
         time.sleep(0.1)
-        socket.send(
-            "What ASCII command to retreive info:\n1.RPOS\n2.OBSF\n3.RBID\n".encode(FORMAT))
-
 
 
 if __name__ == "__main__":
-
-    # uuid = roslaunch.rlutil.get_or_generate_uuid(options_runid=None, options_wait_for_master=False)
-    # roslaunch.configure_logging(uuid)
-    # launch = roslaunch.parent.ROSLaunchParent(uuid, roslaunch_files=[], is_core=True)
-    # launch.start()
 
     rospy.init_node("ros_monitor")
 
@@ -235,4 +249,3 @@ if __name__ == "__main__":
 
     rospy.spin()
     REMOTE_REQUEST_SERVER.close()
-    # launch.shutdown()
