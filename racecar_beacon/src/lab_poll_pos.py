@@ -16,6 +16,7 @@ class PosPoll:
     def __init__(self):
         # Add your subscribers to the class instance here, ex. :
         # self.sub_laser = rospy.Subscriber("/scan", LaserScan, self.scan_cb)
+        self.sub_odom = rospy.Subscriber("/odometry/filtered", Odometry, self.odom_cb)
         print("pos_poll node started.")
 
         # Creates a ROS Timer that will call the timer_cb method every 1.0 sec:
@@ -23,11 +24,16 @@ class PosPoll:
 
     # Timer callback:
     def timer_cb(self, event):
-        print("Timer event.")
+        pass
+        # print("Timer event.")
 
     # Subscriber callback:
     # def scan_cb(self, msg):
     #   print("Got msg from /scan")
+    def odom_cb(self, msg):
+
+      yaw = quaternion_to_yaw(msg.pose.pose.orientation)
+      print(f"Got msg from /Odometry: X:{msg.pose.pose.position.x}, Y:{msg.pose.pose.position.y}, YAW {yaw}")
 
 if __name__ == "__main__":
     rospy.init_node("pos_poll")
