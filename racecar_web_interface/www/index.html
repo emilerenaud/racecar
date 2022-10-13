@@ -30,7 +30,12 @@ Client-side:
   <!-- Menu BEGIN-->
   <div class="collapse" id="navbarToggleExternalContent">
     <div class="bg-dark p-4">
-      <h6 class="text-white h4">Config</h6>
+      <h4 class="text-white h4">Configuration</h4>
+      <h6 class="text-white h6">ROS master IP</h6>
+      <form id="ip_form">
+        <input type="text" id="ip_addr" name="ip_addr" ><br>
+        <input type="submit" value="Connecter">
+      </form>
     </div>
   </div>
 
@@ -57,16 +62,15 @@ Client-side:
         
         <div>
           <h1 class="text-bold"> Contrôle</h1>
-          <!-- <div class="row"> -->
-          <button class="button-style"> test 1</button>
-          <button class="button-style"> test 2</button>
-          <!-- </div> -->
+          <button id="btn_avancer" class="button-style"> Avancer</button>
+          <button id="btn_reculer" class="button-style"> Reculer</button>
         </div>
         
       </div>
   
       <div class="col-md-8 themed-grid-col" style="background-color:rgb(216, 216, 228)">
         <h1 class="text-bold"> Caméra</h1>
+        <img id="camrera_img" src="" alt="Camera not connected" width="100%">
       </div>
     </div>
     
@@ -88,16 +92,18 @@ Client-side:
 
       //Some initializations after the page has been shown
       $(document).ready(function(){
-        document.getElementById("log").value = 'Default text\n'
+        // document.getElementById("log").value = 'Default text\n'
+        console.log($("#ip_form"));
+        $("#ip_form").submit(connectROS());
       });
 
       // Define some functions
       function connectROS() {
         // This function connects to the rosbridge server
-
+      console.log(" Connection to "+$("#ip_addr").value());
 	    rbServer = new ROSLIB.Ros({
           // Assuming ros server IP is 10.42.0.1
-	      url : 'ws://10.42.0.1:9090'
+	      url : 'ws://'+$("#ip_addr").value()+':9090'
 	    });
 
         rbServer.on('connection', function(){
