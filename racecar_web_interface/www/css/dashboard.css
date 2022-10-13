@@ -88,3 +88,53 @@ body {
   border-color: transparent;
   box-shadow: 0 0 0 3px rgba(255, 255, 255, .25);
 }
+
+.text-bold{
+  font-weight: bold;
+}
+
+.align-start {
+  display: flex;
+  justify-content: flex-start;
+  flex-direction: column;
+  padding-left: 2%;
+}
+
+.align-button {
+  display: flex;
+  justify-content: flex-start;
+  flex-direction:row;
+  padding-left: 2%;
+}
+
+.background-color-iframe {
+  background-color: rgb(222, 235, 234);
+  /* border: 2px solid; */
+  width: 15%;
+  /* height: 20%; */
+  padding: 20%;
+  resize: both;
+  overflow: auto;
+
+}
+
+.button-style {
+  background-color: rgb(4, 104, 115);
+  color: white;
+  width: 100px;
+  height: 50px;
+  border-radius: 10px;
+  transition: opacity 0.15s;
+  border:none;
+}
+
+.button-style:hover{
+  opacity: 50%;
+}
+
+.button-style:active{
+  background-color: red;
+}
+
+
+
