@@ -22,7 +22,7 @@ Client-side:
     <link rel="stylesheet" href="css/bootstrap.min.css">
     <link rel="stylesheet" href="css/dashboard.css">
 
-    <title>Laboratoire S5-GIF250</title>
+    <title>Problématique APP3</title>
 </head>
 
 <body>
@@ -30,12 +30,6 @@ Client-side:
   <!-- Menu BEGIN-->
   <div class="collapse" id="navbarToggleExternalContent">
     <div class="bg-dark p-4">
-      <h4 class="text-white h4">Configuration</h4>
-      <h6 class="text-white h6">ROS master IP</h6>
-      <form id="ip_form">
-        <input type="text" id="ip_addr" name="ip_addr" ><br>
-        <input type="submit" value="Connecter">
-      </form>
     </div>
   </div>
 
@@ -49,32 +43,15 @@ Client-side:
   <!-- Menu END-->
 
   <!-- Main layout BEGIN-->
-  <div class="container-fluid">
-    <div class="row"> 
-      <div class="col-md-4 themed-grid-col">
-        <div>
-          <h1 class="text-bold"> Status</h1>  
-          <div width="25%" class="background-color-iframe">
-          </div>
-          <button class="button-style"> Effacez </button>
-          
-        </div>
-        
-        <div>
-          <h1 class="text-bold"> Contrôle</h1>
-          <button id="btn_avancer" class="button-style"> Avancer</button>
-          <button id="btn_reculer" class="button-style"> Reculer</button>
-        </div>
-        
-      </div>
-  
-      <div class="col-md-8 themed-grid-col" style="background-color:rgb(216, 216, 228)">
-        <h1 class="text-bold"> Caméra</h1>
-        <img id="camrera_img" src="" alt="Camera not connected" width="100%">
-      </div>
+  <div class="align-ip">
+    <form action="control.html" method="get">
+        <label>Username</label>
+        <input type="text" name="username_id" required><br>
+        <label for="ip_addr">ROS master IP</label>
+        <input type="text" name="ip_addr" required><br>
+        <button type="submit" onclick="connectROS();" >Connecter</button>
+      </form>
     </div>
-    
-  </div>
   <!-- Main layout END-->
   
   <!-- JavaScript, import frameworks -->
@@ -83,6 +60,7 @@ Client-side:
   <script src="js/popper.min.js"></script>
   <script src="js/bootstrap.min.js"></script>
   <script src="js/roslib.min.js"></script> <!-- rosbridge -->
+  <script src="control.html"></script>
 
   <!-- Custom scripts -->
   <script>
@@ -93,61 +71,47 @@ Client-side:
       //Some initializations after the page has been shown
       $(document).ready(function(){
         // document.getElementById("log").value = 'Default text\n'
-        console.log($("#ip_form"));
-        $("#ip_form").submit(connectROS());
       });
 
+      // function addToTheList() {
+      //   $("list").innerHTML += ("<li>" + u + "</li>");
       // Define some functions
       function connectROS() {
         // This function connects to the rosbridge server
-      console.log(" Connection to "+$("#ip_addr").value());
-	    rbServer = new ROSLIB.Ros({
-          // Assuming ros server IP is 10.42.0.1
-	      url : 'ws://'+$("#ip_addr").value()+':9090'
-	    });
+      // console.log(" Connection to "+$("#ip_addr").value());
 
-        rbServer.on('connection', function(){
-            console.log('Connected to websocket server.');
+      let ip_addr = $('#ip_addr').val();
+      console.log(ip_addr);
+      debugger;
 
-            // These lines create a topic object as defined by roslibjs
-            cmdVelTopic = new ROSLIB.Topic({
-                ros : rbServer,
-                name : '/racecar/cmd_vel_abtr_2',
-                messageType : 'geometry_msgs/Twist'
-            });
-	    });
-
-        rbServer.on('error', function(error) {
-          console.log('Error connecting to websocket server: ', error);
-	    });
-
-	    rbServer.on('close', function() {
-          console.log('Connection to websocket server closed.');
-	    });
+      if ( ip_addr && ip_addr != "" ){
+        
+        rbServer = new ROSLIB.Ros({
+            // Assuming ros server IP is 10.42.0.1
+          url : 'ws://'+$("#ip_addr").val()+':9090'
+        });
+  
+          rbServer.on('connection', function(){
+              console.log('Connected to websocket server.');
+  
+              // These lines create a topic object as defined by roslibjs
+              cmdVelTopic = new ROSLIB.Topic({
+                  ros : rbServer,
+                  name : '/racecar/cmd_vel_abtr_2',
+                  messageType : 'geometry_msgs/Twist'
+              });
+        });
+  
+          rbServer.on('error', function(error) {
+            console.log('Error connecting to websocket server: ', error);
+        });
+  
+        rbServer.on('close', function() {
+            console.log('Connection to websocket server closed.');
+        });
+      }
       }
 
-      // These lines create a message that conforms to the structure of the Twist defined in our ROS installation
-      // It initalizes all properties to zero. They will be set to appropriate values before we publish this message.
-      var twist = new ROSLIB.Message({
-           linear : {
-                x : 0.0,
-                y : 0.0,
-                z : 0.0
-            },
-            angular : {
-                x : 0.0,
-                y : 0.0,
-                z : 0.0
-            }
-      });
-
-      //Publishing loop cmd_vel at 5 Hz
-      setInterval(function(){
-           if(cmdVelTopic != null)
-           {
-             cmdVelTopic.publish(twist);
-           }
-      }, 200);
 
   </script>
 </body>

@@ -1,0 +1,119 @@
+<!doctype html>
+<html>
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+
+    <title>Problématique APP3</title>
+</head>
+
+<body>
+    
+  <!-- Menu BEGIN-->
+  <div class="collapse" id="navbarToggleExternalContent">
+    <div class="bg-dark p-4">
+        <div id="results" style="color: white">
+        </div>
+    </div>
+  </div>
+
+  <nav class="navbar navbar-dark bg-dark">
+    <div>
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarToggleExternalContent">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+    </div>
+  </nav>
+  <!-- Menu END-->
+
+  <!-- Main layout BEGIN-->
+  <div class="container-fluid">
+    <div class="row"> 
+      <div class="col-md-4 themed-grid-col">
+        <div>
+          <h1 class="text-bold"> Status</h1>  
+          <div width="25%" class="background-color-iframe">
+            <ul id="list">
+            </ul>
+          </div>
+          <button class="button-style"> Effacez </button>
+          
+        </div>
+        
+        <div>
+          <h1 class="text-bold"> Contrôle</h1>
+          <button id="btn_avancer" class="button-style"> Avancer</button>
+          <button id="btn_arreter" class="button-style"> Arrêter</button>
+        </div>
+        
+      </div>
+  
+      <div class="col-md-8 themed-grid-col" style="background-color:rgb(216, 216, 228)">
+        <h1 class="text-bold"> Caméra</h1>
+        <img id="camrera_img" src="" alt="Camera not connected" width="100%">
+      </div>
+    </div>
+    
+  </div>
+  <!-- Main layout END-->
+  
+  <!-- JavaScript, import frameworks -->
+  <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+  <script src="js/jquery-3.3.1.slim.min.js"></script>
+  <script src="js/popper.min.js"></script>
+  <script src="js/bootstrap.min.js"></script>
+  <script src="js/roslib.min.js"></script> <!-- rosbridge -->
+
+  <!-- Custom scripts -->
+  <script>
+      // Define some global variables
+      var rbServer = null;
+      var cmdVelTopic = null;
+
+      //Some initializations after the page has been shown
+      $(document).ready(function(){
+        // document.getElementById("log").value = 'Default text\n'
+      });
+
+      const resultList = document.getElementById("results");
+
+      new URLSearchParams(window.location.search).forEach((value,name) => {
+        resultList.append(`${name}: ${value}`)
+        resultList.append(document.createElement('br'));
+      });
+
+      // function addToTheList() {
+      //   $("list").innerHTML += ("<li>" + u + "</li>");
+      // Define some functions
+      // These lines create a message that conforms to the structure of the Twist defined in our ROS installation
+      // It initalizes all properties to zero. They will be set to appropriate values before we publish this message.
+      var twist = new ROSLIB.Message({
+           linear : {
+                x : 0.0,
+                y : 0.0,
+                z : 0.0
+            },
+            angular : {
+                x : 0.0,
+                y : 0.0,
+                z : 0.0
+            }
+      });
+
+      //Publishing loop cmd_vel at 5 Hz
+      setInterval(function(){
+           if(cmdVelTopic != null)
+           {
+             cmdVelTopic.publish(twist);
+           }
+      }, 200);
+
+  </script>
+</body>
+</html>
