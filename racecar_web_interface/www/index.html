@@ -49,16 +49,35 @@ Client-side:
       <div class="col-md-4 themed-grid-col">
         <div>
           <h1 class="text-bold"> Status</h1>  
-          <div width="25%" class="background-color-iframe">
+          <div id="consoleLog" width="30%" class="background-color-iframe">
+
           </div>
-          <button class="button-style"> Effacez </button>
-          
+          <button onclick="clearConsole()" class="button-style"> Effacez </button>
         </div>
         
         <div>
           <h1 class="text-bold"> Contrôle</h1>
-          <button class="button-style"> Avancez</button>
-          <button class="button-style"> Reculez</button>
+          <button id="buttonAvancez" onclick="writeConsole('Avancez!<br>')" class="button-style"> Avancez</button>
+          <button id="buttonReculez" onclick="writeConsole('Reculez!<br>')" class="button-style"> Reculez</button>
+          <script>
+            function writeConsole(text)
+            {
+              // document.getElementById()
+              var console = document.getElementById('consoleLog');
+              console.innerHTML += text;
+              console.scrollTop = console.scrollHeight;
+            }
+            function clearConsole()
+            {
+              document.getElementById('consoleLog').innerHTML = '';
+            }
+            // function funcAvancez(){
+            //   document.getElementById("consoleLog").innerHTML += "<span class='text-console'> Avancez! </span>";
+            // }
+            // function funcReculez(){
+            //   document.getElementById("consoleLog").innerHTML += "Reculez!<br>";
+            // }
+          </script>
         </div>
         
       </div>
