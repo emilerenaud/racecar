@@ -22,7 +22,7 @@ Client-side:
     <link rel="stylesheet" href="css/bootstrap.min.css">
     <link rel="stylesheet" href="css/dashboard.css">
 
-    <title>Laboratoire S5-GIF250</title>
+    <title>Laboratoire S5-GIF250</title> 
 </head>
 
 <body>
@@ -30,8 +30,15 @@ Client-side:
   <!-- Menu BEGIN-->
   <div class="collapse" id="navbarToggleExternalContent">
     <div class="bg-dark p-4">
-      <h6 class="text-white h4">Config</h6>
-    </div>
+      <h6 class="text-white h4">Configuration</h6>
+      <!-- <div style="color: rgb(255, 255, 255)"> ROS master IP Adress :</div> -->
+      <!-- <input id="ip_adress" placeholder="127.0.0.1"> </input> -->
+      <!-- <form> -->
+        <label for="ip_adress" style="color: rgb(255, 255, 255)">ROS master IP Adress</label><br>
+        <input type="text" id="ip_adress" name="IP Adress"><br>
+        <button onclick="connectROS()" class="button-style"> Connectez</button>
+      <!-- </form> -->
+      </div>
   </div>
 
   <nav class="navbar navbar-dark bg-dark">
@@ -57,9 +64,14 @@ Client-side:
         
         <div>
           <h1 class="text-bold"> Contrôle</h1>
-          <button id="buttonAvancez" onclick="writeConsole('Avancez!<br>')" class="button-style"> Avancez</button>
-          <button id="buttonReculez" onclick="writeConsole('Reculez!<br>')" class="button-style"> Reculez</button>
+          <button id="buttonAvancez" onclick="buttonEvent('En Avant!<br>',1)" class="button-style"> Avancez</button>
+          <button id="buttonReculez" onclick="buttonEvent('Arrêts!<br>',0)" class="button-style"> Reculez</button>
           <script>
+            function buttonEvent(text,state)
+            {
+              writeConsole(text);
+              updateTwist(state);
+            }
             function writeConsole(text)
             {
               // document.getElementById()
@@ -70,13 +82,7 @@ Client-side:
             function clearConsole()
             {
               document.getElementById('consoleLog').innerHTML = '';
-            }
-            // function funcAvancez(){
-            //   document.getElementById("consoleLog").innerHTML += "<span class='text-console'> Avancez! </span>";
-            // }
-            // function funcReculez(){
-            //   document.getElementById("consoleLog").innerHTML += "Reculez!<br>";
-            // }
+            }   
           </script>
         </div>
         
@@ -109,6 +115,7 @@ Client-side:
       var rbServer = null;
       var cmdVelTopic = null;
 
+
       //Some initializations after the page has been shown
       $(document).ready(function(){
         document.getElementById("log").value = 'Default text\n'
@@ -116,36 +123,41 @@ Client-side:
 
       // Define some functions
       function connectROS() {
-        // This function connects to the rosbridge server
+          // This function connects to the rosbridge server
+        // document.getElementById('buttonReculez').style.backgroundColor = "white";
+        var ip = document.getElementById('ip_adress').value;
+        console.log(ip)
+        // document.getElementById('consoleLog').innerHTML += ip;
+        rbServer = new ROSLIB.Ros({
+            // Assuming ros server IP is 10.42.0.1
+          // url : 'ws://127.0.0.1:9090'
+          url : 'ws://' + ip + ':9090'
+        });
 
-	    rbServer = new ROSLIB.Ros({
-          // Assuming ros server IP is 10.42.0.1
-	      url : 'ws://10.42.0.1:9090'
-	    });
+          rbServer.on('connection', function(){
+              console.log('Connected to websocket server.');
 
-        rbServer.on('connection', function(){
-            console.log('Connected to websocket server.');
+              // These lines create a topic object as defined by roslibjs
+              cmdVelTopic = new ROSLIB.Topic({
+                  ros : rbServer,
+                  name : '/racecar/cmd_vel_abtr_2',
+                  messageType : 'geometry_msgs/Twist'
+              });
+        });
 
-            // These lines create a topic object as defined by roslibjs
-            cmdVelTopic = new ROSLIB.Topic({
-                ros : rbServer,
-                name : '/racecar/cmd_vel_abtr_2',
-                messageType : 'geometry_msgs/Twist'
-            });
-	    });
+          rbServer.on('error', function(error) {
+            console.log('Error connecting to websocket server: ', error);
+        });
 
-        rbServer.on('error', function(error) {
-          console.log('Error connecting to websocket server: ', error);
-	    });
-
-	    rbServer.on('close', function() {
-          console.log('Connection to websocket server closed.');
-	    });
+        rbServer.on('close', function() {
+            console.log('Connection to websocket server closed.');
+        });
       }
 
       // These lines create a message that conforms to the structure of the Twist defined in our ROS installation
-      // It initalizes all properties to zero. They will be set to appropriate values before we publish this message.
-      var twist = new ROSLIB.Message({
+      // It initalizes all properties to zero. They will be set to appropriate values before we publish this message
+
+        var twist = new ROSLIB.Message({
            linear : {
                 x : 0.0,
                 y : 0.0,
@@ -156,12 +168,23 @@ Client-side:
                 y : 0.0,
                 z : 0.0
             }
-      });
+        });
+
+        function updateTwist(state)
+        {
+          if(state == 1 || state ==0)
+          {
+            twist.linear.x = state;
+          }
+        }
+
+      
 
       //Publishing loop cmd_vel at 5 Hz
       setInterval(function(){
            if(cmdVelTopic != null)
            {
+            
              cmdVelTopic.publish(twist);
            }
       }, 200);
