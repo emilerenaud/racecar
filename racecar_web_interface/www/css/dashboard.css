@@ -193,11 +193,14 @@ body {
 }
 .online-style {
   background-color: rgb(10, 229, 47);
+  margin-left: 25px;
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
   padding-left: 8px;
   color: white;
-  width: 60x;
+  width: 60px;
   height: 25px;
-  border-radius: 1px;
   border-radius: 10px;
   border:none;
 }

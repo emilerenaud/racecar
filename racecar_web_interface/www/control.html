@@ -107,7 +107,7 @@
       </div>
     </div>
     <div class="back-button-box">
-      <a href="/racecar_web_interface/www/" class="button-style back-button" > Back</a>
+      <a href="/" onclick="closeWebSocket()" class="button-style back-button" > Back</a>
     </div>
   </div>
   <!-- Main layout END-->
@@ -145,7 +145,8 @@
     var rbServer = null;
     var cmdVelTopic = null;
     var ip_addr = null;
-      var deadman = false;
+    var deadman = false;
+    let keydown_flag = 0;
 
       let btn_forward = document.getElementById("btn_forward");
       let btn_left = document.getElementById("btn_left");
@@ -167,21 +168,47 @@
       });
 
       window.addEventListener("keydown", function(event) {
-        if (event.key == " " && deadman === false && btn_deadman.disabled === false){ 
-            addStatusList("deadman");
-        } else if(event.key == "ArrowUp" && deadman === true){
+
+        console.log(event.key);
+
+        if (event.key == " " && deadman === false && btn_deadman.disabled === false){
+          keydown_flag = 0; 
+          addStatusList("deadman");
+        } else if(event.key == "w" && deadman === true && keydown_flag !== 1){
+          keydown_flag = 1;
           addStatusList("forward");
-        } else if(event.key == "ArrowDown" && deadman === true){
+        } else if(event.key == "s" && deadman === true && keydown_flag !== 2){
+          keydown_flag = 2;
           addStatusList("backward");
-        } else if(event.key == "ArrowLeft" && deadman === true){
+        } else if(event.key == "a" && deadman === true && keydown_flag !== 3){
+          keydown_flag = 3;
           addStatusList("left");
-        } else if(event.key == "ArrowRight" && deadman === true){
+        } else if(event.key == "d" && deadman === true && keydown_flag !== 4){
+          keydown_flag = 4;
           addStatusList("right");
         }
       });
       window.addEventListener("keyup", function(event) {
         if (event.key == " " && deadman === true && btn_deadman.disabled === false){ 
-            addStatusList("deadman");
+          twist.linear.x = 0.0;
+          twist.linear.y = 0.0;
+          twist.linear.z = 0.0;
+          twist.angular.x = 0.0;
+          twist.angular.y = 0.0;
+          twist.angular.z = 0.0;
+          addStatusList("deadman");
+
+        } else {
+          
+          if (keydown_flag === 1 || keydown_flag === 2){
+
+            twist.linear.x = 0.0;
+          } else {
+            
+            twist.angular.z = 0.0;
+          }
+          keydown_flag = 0; 
+
         }
       });
 
@@ -192,7 +219,6 @@
         ip_addr = ip
         resultList.append(`${name}: ${ip}`)
         resultList.append(document.createElement('br'));
-        camera.src = `http://${ip}:9090/stream?topic=/racecar/raspicam_node/image_raw`
       });
 
       function addStatusList(value) {
@@ -223,17 +249,30 @@
             twist.linear.x = 1.0;
   
           } else if( value === "left"){
+
+            twist.angular.z = 1.0;
   
           } else if( value === "backward"){
             twist.linear.x = -1.0;
   
           } else if( value === "right"){
+
+            twist.angular.z = -1.0;
+
+          } else if ( deadman === false ){
+            twist.linear.x = 0.0;
+            twist.angular.z = 0.0;
           }
+
 
         }
       }
       function eraseStatusList(){
         document.getElementById("command_list").innerHTML = null;
+      }
+
+      function closeWebSocket(){
+
       }
 
       function connectROS() {
@@ -248,7 +287,8 @@
           url : 'ws://'+ip_addr+':9090'
         });
 
-       
+        camera.src = `http://${ip_addr}:8080/stream?topic=/racecar/raspicam_node/image_raw`
+
       }
       
       if ( rbServer.isConnected === false ){
@@ -258,7 +298,7 @@
 
               status_car.classList.remove("offline-style");
               status_car.classList.add("online-style")
-              status_car.value = "Online";
+              status_car.innerHTML = "Online";
 
               btn_forward.disabled = false;
               btn_backward.classList.disabled = false;
@@ -272,12 +312,23 @@
                   name : '/racecar/cmd_vel_abtr_2',
                   messageType : 'geometry_msgs/Twist'
               });
+
+              propSensorTopic = new ROSLIB.Topic({
+                  ros : rbServer,
+                  name : '/racecar/prop_sensors',
+                  messageType : 'std_msgs/Float32MultiArray'
+              });
+
+              propSensorTopic.subscribe(function(message) {
+                console.log('Received message on ' + propSensorTopic.name + ': ' + message.data);
+              });
+
         });
         rbServer.on('error', function(error) {
           console.log('Error connecting to websocket server: ', error);
           status_car.classList.remove("online-style");
           status_car.classList.add("offline-style");
-          status_car.value = "Offline";
+          status_car.innerHTML = "Offline";
 
           btn_forward.disabled = true;
           btn_backward.disabled = true;
@@ -287,7 +338,18 @@
         });
   
         rbServer.on('close', function() {
-            console.log('Connection to websocket server closed.');
+
+          console.log('Connection to websocket server closed.');
+          status_car.classList.remove("online-style");
+          status_car.classList.add("offline-style");
+          status_car.innerHTML = "Offline";
+
+          btn_forward.disabled = true;
+          btn_backward.disabled = true;
+          btn_left.disabled = true;
+          btn_right.disabled = true;
+          btn_deadman.disabled = true;
+
         });
 
       }
