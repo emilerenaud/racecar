@@ -12,6 +12,15 @@ Client-side:
 * https://getbootstrap.com/docs/4.0/getting-started/introduction/
 * https://getbootstrap.com/docs/4.0/layout/grid/
 -->
+<!--
+.##.....##.########....###....########.
+.##.....##.##.........##.##...##.....##
+.##.....##.##........##...##..##.....##
+.#########.######...##.....##.##.....##
+.##.....##.##.......#########.##.....##
+.##.....##.##.......##.....##.##.....##
+.##.....##.########.##.....##.########.
+-->
 
 <head>
     <!-- Required meta tags -->
@@ -24,6 +33,16 @@ Client-side:
 
     <title>Problématique APP3</title>
 </head>
+
+<!--
+.########...#######..########..##....##
+.##.....##.##.....##.##.....##..##..##.
+.##.....##.##.....##.##.....##...####..
+.########..##.....##.##.....##....##...
+.##.....##.##.....##.##.....##....##...
+.##.....##.##.....##.##.....##....##...
+.########...#######..########.....##...
+-->
 
 <body>
     
@@ -43,16 +62,26 @@ Client-side:
   <!-- Menu END-->
 
   <!-- Main layout BEGIN-->
-  <div class="align-ip">
-    <form action="control.html" method="get">
+  <div class="form-box">
+    <form action="control.html" method="get" id="login">
         <label>Username</label>
-        <input type="text" name="username_id" required><br>
+        <input type="text" name="username_id" value="racecar" required><br>
         <label for="ip_addr">ROS master IP</label>
-        <input type="text" name="ip_addr" required><br>
-        <button type="submit" onclick="connectROS();" >Connecter</button>
+        <input type="text" id="ip_addr" name="ip_addr" required><br>
+        <button type="button" onclick="checkIP()" >Connecter</button>
       </form>
     </div>
   <!-- Main layout END-->
+
+<!--
+.......####.##.....##.########...#######..########..########..######.
+........##..###...###.##.....##.##.....##.##.....##....##....##....##
+........##..####.####.##.....##.##.....##.##.....##....##....##......
+........##..##.###.##.########..##.....##.########.....##.....######.
+........##..##.....##.##........##.....##.##...##......##..........##
+........##..##.....##.##........##.....##.##....##.....##....##....##
+.......####.##.....##.##.........#######..##.....##....##.....######.
+-->
   
   <!-- JavaScript, import frameworks -->
   <!-- jQuery first, then Popper.js, then Bootstrap JS -->
@@ -60,56 +89,34 @@ Client-side:
   <script src="js/popper.min.js"></script>
   <script src="js/bootstrap.min.js"></script>
   <script src="js/roslib.min.js"></script> <!-- rosbridge -->
-  <script src="control.html"></script>
+
+<!--
+........######..##.....##..######..########..#######..##.....##.....######...######..########..####.########..########..######.
+.......##....##.##.....##.##....##....##....##.....##.###...###....##....##.##....##.##.....##..##..##.....##....##....##....##
+.......##.......##.....##.##..........##....##.....##.####.####....##.......##.......##.....##..##..##.....##....##....##......
+.......##.......##.....##..######.....##....##.....##.##.###.##.....######..##.......########...##..########.....##.....######.
+.......##.......##.....##.......##....##....##.....##.##.....##..........##.##.......##...##....##..##...........##..........##
+.......##....##.##.....##.##....##....##....##.....##.##.....##....##....##.##....##.##....##...##..##...........##....##....##
+........######...#######...######.....##.....#######..##.....##.....######...######..##.....##.####.##...........##.....######.
+-->
 
   <!-- Custom scripts -->
   <script>
-      // Define some global variables
-      var rbServer = null;
-      var cmdVelTopic = null;
 
       //Some initializations after the page has been shown
       $(document).ready(function(){
         // document.getElementById("log").value = 'Default text\n'
       });
 
-      // function addToTheList() {
-      //   $("list").innerHTML += ("<li>" + u + "</li>");
-      // Define some functions
-      function connectROS() {
-        // This function connects to the rosbridge server
-      // console.log(" Connection to "+$("#ip_addr").value());
-
-      let ip_addr = $('#ip_addr').val();
-      console.log(ip_addr);
-      debugger;
-
-      if ( ip_addr && ip_addr != "" ){
-        
-        rbServer = new ROSLIB.Ros({
-            // Assuming ros server IP is 10.42.0.1
-          url : 'ws://'+$("#ip_addr").val()+':9090'
-        });
-  
-          rbServer.on('connection', function(){
-              console.log('Connected to websocket server.');
-  
-              // These lines create a topic object as defined by roslibjs
-              cmdVelTopic = new ROSLIB.Topic({
-                  ros : rbServer,
-                  name : '/racecar/cmd_vel_abtr_2',
-                  messageType : 'geometry_msgs/Twist'
-              });
-        });
-  
-          rbServer.on('error', function(error) {
-            console.log('Error connecting to websocket server: ', error);
-        });
-  
-        rbServer.on('close', function() {
-            console.log('Connection to websocket server closed.');
-        });
-      }
+      function checkIP() {
+        let form  = document.getElementById("login");
+        let ip_addr = document.getElementById("ip_addr").value;
+        const regexIpAllowed = /^((127|10)\.)(0\.)(([0-9]|1[0-9][0-9]|2[0-5][0-4])\.)([0-9]|1[0-9][0-9]|2[0-5][0-4])/gi;
+        if ( regexIpAllowed.test(ip_addr) === true ){
+          form.submit();
+        } else {
+          console.log("Invalid IP. Please try again")
+        }
       }
 
 

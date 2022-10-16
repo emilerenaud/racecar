@@ -1,6 +1,16 @@
 <!doctype html>
 <html>
 
+<!--
+.##.....##.########....###....########.
+.##.....##.##.........##.##...##.....##
+.##.....##.##........##...##..##.....##
+.#########.######...##.....##.##.....##
+.##.....##.##.......#########.##.....##
+.##.....##.##.......##.....##.##.....##
+.##.....##.########.##.....##.########.
+-->
+
 <head>
     <!-- Required meta tags -->
     <meta charset="utf-8">
@@ -9,9 +19,20 @@
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="css/bootstrap.min.css">
     <link rel="stylesheet" href="css/dashboard.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css">
 
     <title>Problématique APP3</title>
 </head>
+
+<!--
+.########...#######..########..##....##
+.##.....##.##.....##.##.....##..##..##.
+.##.....##.##.....##.##.....##...####..
+.########..##.....##.##.....##....##...
+.##.....##.##.....##.##.....##....##...
+.##.....##.##.....##.##.....##....##...
+.########...#######..########.....##...
+-->
 
 <body>
     
@@ -37,62 +58,241 @@
     <div class="row"> 
       <div class="col-md-4 themed-grid-col">
         <div>
-          <h1 class="text-bold"> Status</h1>  
-          <div width="25%" class="background-color-iframe">
-            <ul id="list">
+          <div class="status-activity-box">
+            <div>
+              <h1 class="status-bar"> Status</h1>  
+            </div>
+            <div class="activity-box">
+              <i id="status-car" class="offline-style" >Offline</i>  
+            </div>
+          </div>
+          <div class="status-textbox">
+            <ul id="command_list">
             </ul>
           </div>
-          <button class="button-style"> Effacez </button>
-          
+          <div style="margin-top: 20px;">
+            <button class="button-style bi bi-eraser" onclick="eraseStatusList()"></button>
+          </div>
         </div>
-        
         <div>
-          <h1 class="text-bold"> Contrôle</h1>
-          <button id="btn_avancer" class="button-style"> Avancer</button>
-          <button id="btn_arreter" class="button-style"> Arrêter</button>
-        </div>
-        
+          <div>
+            <h1 class="text-bold"> Contrôle</h1>
+          </div>
+          <div class=" forward-button-box">
+            <button id="btn_forward" class="button-style bi bi-arrow-up" onclick="addStatusList('forward')"></button>
+          </div>
+          <div class="left-backward-right-button-box">
+            <button id="btn_left" class="button-style bi bi-arrow-left" onclick="addStatusList('left')"></button>
+            <button id="btn_backward" class="button-style bi bi-arrow-down" onclick="addStatusList('backward')"></button>
+            <button id="btn_right" class="button-style bi bi-arrow-right" onclick="addStatusList('right')"></button>
+          </div>
+          <div class=" deadman-status-box">
+            <div>
+              <button id="btn_deadman" class="deadman-button" onclick="addStatusList('deadman')"> Deadman</button>
+            </div>
+            <div class="deadman-activity-box">
+              <i id="status-deadman" class="deadman-status-off" >Off </i>  
+            </div>
+          </div>
+        </div>  
       </div>
   
       <div class="col-md-8 themed-grid-col" style="background-color:rgb(216, 216, 228)">
-        <h1 class="text-bold"> Caméra</h1>
-        <img id="camrera_img" src="" alt="Camera not connected" width="100%">
+        <div>
+          <h1 class="text-bold"> Caméra</h1>
+        </div>
+        <div>
+          <img id="camera_img" src="" alt="Camera not connected" width="100%">
+        </div>
       </div>
     </div>
-    
+    <div class="back-button-box">
+      <a href="/racecar_web_interface/www/" class="button-style back-button" > Back</a>
+    </div>
   </div>
   <!-- Main layout END-->
   
-  <!-- JavaScript, import frameworks -->
-  <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+
+<!--
+....####.##.....##.########...#######..########..########..######.
+.....##..###...###.##.....##.##.....##.##.....##....##....##....##
+.....##..####.####.##.....##.##.....##.##.....##....##....##......
+.....##..##.###.##.########..##.....##.########.....##.....######.
+.....##..##.....##.##........##.....##.##...##......##..........##
+.....##..##.....##.##........##.....##.##....##.....##....##....##
+....####.##.....##.##.........#######..##.....##....##.....######.
+-->
+
   <script src="js/jquery-3.3.1.slim.min.js"></script>
   <script src="js/popper.min.js"></script>
   <script src="js/bootstrap.min.js"></script>
   <script src="js/roslib.min.js"></script> <!-- rosbridge -->
 
-  <!-- Custom scripts -->
-  <script>
-      // Define some global variables
-      var rbServer = null;
-      var cmdVelTopic = null;
 
+<!--
+........######..##.....##..######..########..#######..##.....##.....######...######..########..####.########..########..######.
+.......##....##.##.....##.##....##....##....##.....##.###...###....##....##.##....##.##.....##..##..##.....##....##....##....##
+.......##.......##.....##.##..........##....##.....##.####.####....##.......##.......##.....##..##..##.....##....##....##......
+.......##.......##.....##..######.....##....##.....##.##.###.##.....######..##.......########...##..########.....##.....######.
+.......##.......##.....##.......##....##....##.....##.##.....##..........##.##.......##...##....##..##...........##..........##
+.......##....##.##.....##.##....##....##....##.....##.##.....##....##....##.##....##.##....##...##..##...........##....##....##
+........######...#######...######.....##.....#######..##.....##.....######...######..##.....##.####.##...........##.....######.
+-->
+  <script>
+
+    
+    // Define some global variables
+    var rbServer = null;
+    var cmdVelTopic = null;
+    var ip_addr = null;
+      var deadman = false;
+
+      let btn_forward = document.getElementById("btn_forward");
+      let btn_left = document.getElementById("btn_left");
+      let btn_backward = document.getElementById("btn_backward");
+      let btn_right = document.getElementById("btn_right");
+      let btn_deadman= document.getElementById("btn_deadman");
+      let status_deadman = document.getElementById("status-deadman");
+      
       //Some initializations after the page has been shown
       $(document).ready(function(){
         // document.getElementById("log").value = 'Default text\n'
+  
+        // Disable buttons in case of
+        // btn_forward.disabled = true;
+        // btn_backward.disabled = true;
+        // btn_left.disabled = true;
+        // btn_right.disabled = true;
+        // btn_deadman.disabled = true;
+      });
+
+      window.addEventListener("keydown", function(event) {
+        if (event.key == " " && deadman === false && btn_deadman.disabled === false){ 
+            addStatusList("deadman");
+        } else if(event.key == "ArrowUp" && deadman === true){
+          addStatusList("forward");
+        } else if(event.key == "ArrowDown" && deadman === true){
+          addStatusList("backward");
+        } else if(event.key == "ArrowLeft" && deadman === true){
+          addStatusList("left");
+        } else if(event.key == "ArrowRight" && deadman === true){
+          addStatusList("right");
+        }
+      });
+      window.addEventListener("keyup", function(event) {
+        if (event.key == " " && deadman === true && btn_deadman.disabled === false){ 
+            addStatusList("deadman");
+        }
       });
 
       const resultList = document.getElementById("results");
+      let camera = document.getElementById("camera_img")
 
-      new URLSearchParams(window.location.search).forEach((value,name) => {
-        resultList.append(`${name}: ${value}`)
+      new URLSearchParams(window.location.search).forEach((ip,name) => {
+        ip_addr = ip
+        resultList.append(`${name}: ${ip}`)
         resultList.append(document.createElement('br'));
+        camera.src = `http://${ip}:9090/stream?topic=/racecar/raspicam_node/image_raw`
       });
 
-      // function addToTheList() {
-      //   $("list").innerHTML += ("<li>" + u + "</li>");
-      // Define some functions
-      // These lines create a message that conforms to the structure of the Twist defined in our ROS installation
-      // It initalizes all properties to zero. They will be set to appropriate values before we publish this message.
+      function addStatusList(value) {
+
+        if( value === "deadman"){
+
+          if (deadman === false){
+            status_deadman.classList.remove("deadman-status-off");
+            status_deadman.classList.add("deadman-status-on");
+            status_deadman.innerHTML = "On";
+            deadman = true;
+
+          } else if(deadman === true){
+
+            status_deadman.classList.remove("deadman-status-on");
+            status_deadman.classList.add("deadman-status-off");
+            status_deadman.innerHTML = "Off";
+            deadman = false;
+
+          }
+
+        }
+
+        if( deadman === true ){
+          document.getElementById("command_list").innerHTML += ("<li>" + value + "</li>");
+
+          if ( value === "forward"){
+            twist.linear.x = 1.0;
+  
+          } else if( value === "left"){
+  
+          } else if( value === "backward"){
+            twist.linear.x = -1.0;
+  
+          } else if( value === "right"){
+          }
+
+        }
+      }
+      function eraseStatusList(){
+        document.getElementById("command_list").innerHTML = null;
+      }
+
+      function connectROS() {
+        // This function connects to the rosbridge server
+
+        let status_car = document.getElementById("status-car");
+        
+      if ( rbServer === null){
+
+        rbServer = new ROSLIB.Ros({
+            // Assuming ros server IP is 10.42.0.1
+          url : 'ws://'+ip_addr+':9090'
+        });
+
+       
+      }
+      
+      if ( rbServer.isConnected === false ){
+
+        rbServer.on('connection', function(){
+              console.log('Connected to websocket server.');
+
+              status_car.classList.remove("offline-style");
+              status_car.classList.add("online-style")
+              status_car.value = "Online";
+
+              btn_forward.disabled = false;
+              btn_backward.classList.disabled = false;
+              btn_left.classList.disabled = false;
+              btn_right.classList.disabled = false;
+              btn_deadman.classList.disabled = false;
+  
+              // These lines create a topic object as defined by roslibjs
+              cmdVelTopic = new ROSLIB.Topic({
+                  ros : rbServer,
+                  name : '/racecar/cmd_vel_abtr_2',
+                  messageType : 'geometry_msgs/Twist'
+              });
+        });
+        rbServer.on('error', function(error) {
+          console.log('Error connecting to websocket server: ', error);
+          status_car.classList.remove("online-style");
+          status_car.classList.add("offline-style");
+          status_car.value = "Offline";
+
+          btn_forward.disabled = true;
+          btn_backward.disabled = true;
+          btn_left.disabled = true;
+          btn_right.disabled = true;
+          btn_deadman.disabled = true;
+        });
+  
+        rbServer.on('close', function() {
+            console.log('Connection to websocket server closed.');
+        });
+
+      }
+    }
+
       var twist = new ROSLIB.Message({
            linear : {
                 x : 0.0,
@@ -106,12 +306,16 @@
             }
       });
 
+
+      
       //Publishing loop cmd_vel at 5 Hz
       setInterval(function(){
-           if(cmdVelTopic != null)
-           {
-             cmdVelTopic.publish(twist);
-           }
+        if(cmdVelTopic != null)
+        {
+          cmdVelTopic.publish(twist);
+        }
+        connectROS(); // PUT IN SETINTERVAL
+
       }, 200);
 
   </script>
