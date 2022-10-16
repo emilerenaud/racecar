@@ -61,12 +61,22 @@ Client-side:
           <button onclick="clearConsole()" class="button-style"> Effacez </button>
         </div>
         
-        <div>
+        <div id="buttonsControl">
           <h1 class="text-bold"> Contrôle</h1>
-          <div id="buttonsControl">
-            <button id="buttonAvancez" onclick="buttonEvent('En Avant!<br>',1)" class="button-style"> Avancez</button>
-            <button id="buttonReculez" onclick="buttonEvent('Arrêts!<br>',0)" class="button-style"> Stop</button>
-            <button id="test" onclick="disableControlButtons(1)", class="button-style">Fonction buttons</button>
+          <div class='row'>
+            <button id="LFront" onclick="buttonEvent(this.id)" class="button-style"> Left Front</button>
+            <button id="Front" onclick="buttonEvent(this.id)" class="button-style"> Front</button>
+            <button id="RFront" onclick="buttonEvent(this.id)", class="button-style"> Right Front</button>
+          </div>
+          <div class="row">
+            <button id="Left" onclick="buttonEvent(this.id)" class="button-style">Left</button>
+            <button id="Stop" onclick="buttonEvent(this.id)" class="button-style">Stop</button>
+            <button id="Right" onclick="buttonEvent(this.id)" class="button-style">Right</button>
+          </div>
+          <div class="row">
+            <button id="LBack" onclick="buttonEvent(this.id)" class="button-style">Left Back</button>
+            <button id="Back" onclick="buttonEvent(this.id)" class="button-style">Back</button>
+            <button id="RBack" onclick="buttonEvent(this.id)" class="button-style">Right Back</button>
           </div>
         </div>
         
