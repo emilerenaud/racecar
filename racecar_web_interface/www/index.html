@@ -21,8 +21,7 @@ Client-side:
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="css/bootstrap.min.css">
     <link rel="stylesheet" href="css/dashboard.css">
-
-    <title>Laboratoire S5-GIF250</title> 
+    <title>APP3 Racecar</title> 
 </head>
 
 <body>
@@ -64,26 +63,11 @@ Client-side:
         
         <div>
           <h1 class="text-bold"> Contrôle</h1>
-          <button id="buttonAvancez" onclick="buttonEvent('En Avant!<br>',1)" class="button-style"> Avancez</button>
-          <button id="buttonReculez" onclick="buttonEvent('Arrêts!<br>',0)" class="button-style"> Stop</button>
-          <script>
-            function buttonEvent(text,state)
-            {
-              writeConsole(text);
-              updateTwist(state);
-            }
-            function writeConsole(text)
-            {
-              // document.getElementById()
-              var console = document.getElementById('consoleLog');
-              console.innerHTML += text;
-              console.scrollTop = console.scrollHeight;
-            }
-            function clearConsole()
-            {
-              document.getElementById('consoleLog').innerHTML = '';
-            }   
-          </script>
+          <div id="buttonsControl">
+            <button id="buttonAvancez" onclick="buttonEvent('En Avant!<br>',1)" class="button-style"> Avancez</button>
+            <button id="buttonReculez" onclick="buttonEvent('Arrêts!<br>',0)" class="button-style"> Stop</button>
+            <button id="test" onclick="disableControlButtons(1)", class="button-style">Fonction buttons</button>
+          </div>
         </div>
         
       </div>
@@ -108,6 +92,7 @@ Client-side:
   <script src="js/popper.min.js"></script>
   <script src="js/bootstrap.min.js"></script>
   <script src="js/roslib.min.js"></script> <!-- rosbridge -->
+  <script type="text/javascript" src="js/functions.js"></script> <!-- custom js functions-->
 
   <!-- Custom scripts -->
   <script>
@@ -169,17 +154,6 @@ Client-side:
                 z : 0.0
             }
         });
-
-        function updateTwist(state)
-        {
-          if(state == 1 || state ==0)
-          {
-            twist.linear.x = state;
-          }
-        }
-
-      
-
       //Publishing loop cmd_vel at 5 Hz
       setInterval(function(){
            if(cmdVelTopic != null)
