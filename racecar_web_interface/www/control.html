@@ -178,17 +178,33 @@
             sent_flag = -1;
           }
           if(map[87] === true && sent_flag !== 1){
-          addStatusList("forward");
-          sent_flag = 1;
-          } else if (map[83] === true && sent_flag !== 2){
-          addStatusList("backward");
-          sent_flag = 2;          
-          } else if (map[65] === true && sent_flag !== 3){
-          addStatusList("left");
-          sent_flag = 3;
-          } else if (map[68] === true && sent_flag !== 4){
-          addStatusList("right");
-          sent_flag = 4;
+            addStatusList("forward");
+            sent_flag = 1;
+
+          }
+          if (map[83] === true && sent_flag !== 2){
+            addStatusList("backward");
+            sent_flag = 2;  
+       
+          }
+          if (map[65] === true && sent_flag !== 3){
+            addStatusList("left");
+            sent_flag = 3;
+
+          }
+          if (map[68] === true && sent_flag !== 4){
+            addStatusList("right");
+            sent_flag = 4;
+
+          }
+          if((map[87] === false && map[83] === false)||(map[87] === false && map[83] === undefined)||(map[87] === undefined && map[83] === false)){
+            twist.linear.x = 0.0;
+
+          }
+
+          if ((map[65] === false && map[68] === false)||(map[65] === false && map[68] === undefined)||(map[65] === undefined && map[68] === false)){
+            twist.angular.z = 0.0;
+
           }
           
         } 
@@ -196,18 +212,11 @@
         if (map[32] === false){
           deadman = false;
           twist.linear.x = 0.0;
-          twist.linear.y = 0.0;
-          twist.linear.z = 0.0;
-          twist.angular.x = 0.0;
-          twist.angular.y = 0.0;
           twist.angular.z = 0.0;
           addStatusList("deadman");
           sent_flag=0;
-        } else if (map[87] === false || map[83] === false){
-          twist.linear.x = 0.0;
-        } else if (map[65] === false || map[68] === false){
-          twist.angular.z = 0.0;
-      }
+        }
+
     }
 
       const resultList = document.getElementById("results");
