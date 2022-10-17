@@ -67,7 +67,7 @@
             </div>
           </div>
           <div class="status-textbox">
-            <ul id="command_list" style="height:20px; resize:auto; overflow:auto;">
+            <ul id="command_list" >
             </ul>
           </div>
           <div style="margin-top: 20px;">
@@ -199,12 +199,12 @@
 
           }
           if((map[87] === false && map[83] === false)||(map[87] === false && map[83] === undefined)||(map[87] === undefined && map[83] === false)){
-            twist.linear.x = 0.0;
+            twist.linear.x = 0;
 
           }
 
           if ((map[65] === false && map[68] === false)||(map[65] === false && map[68] === undefined)||(map[65] === undefined && map[68] === false)){
-            twist.angular.z = 0.0;
+            twist.angular.z = 0;
 
           }
           
@@ -213,8 +213,8 @@
         if (map[32] === false){
           btn_deadman.style = null;
           deadman = false;
-          twist.linear.x = 0.0;
-          twist.angular.z = 0.0;
+          twist.linear.x = 0;
+          twist.angular.z = 0;
           addStatusList("deadman");
           sent_flag=0;
         }
@@ -259,29 +259,27 @@
         }
         // document.getElementById("command_list").scrollTop = document.getElementById("command_list").scrollHeight;
         if( deadman === true ){
+          console.log(value);
           document.getElementById("command_list").innerHTML += ("<li>" + value + "</li>");
-          // joyValue.buttons.button5 = 1;
-          // joyValue.buttons.button7 = 1;
-          // joyTopic.publish(joyValue);
           if ( value === "forward"){
-            twist.linear.x = 1.0;
+            twist.linear.x = 1;
   
           } else if( value === "left"){
 
-            twist.angular.z = 1.0;
+            twist.angular.z = 1;
   
           } else if( value === "backward"){
-            twist.linear.x = -1.0;
+            twist.linear.x = -1;
   
           } else if( value === "right"){
 
-            twist.angular.z = -1.0;
+            twist.angular.z = -1;
 
           } 
    
         } else {
-          twist.linear.x = 0.0;
-          twist.angular.z = 0.0;
+          twist.linear.x = 0;
+          twist.angular.z = 0;
           // joyValue.buttons.button5 = 0;
           // joyValue.buttons.button7 = 0;
           // joyTopic.publish(joyValue);
@@ -329,11 +327,7 @@
                   messageType : 'geometry_msgs/Twist'
               });
 
-              joyTopic = new ROSLIB.Topic({
-                  ros : rbServer,
-                  name : '/racecar/joy',
-                  messageType : 'sensor_msgs/Joy'
-              });
+              
 
               propSensorTopic = new ROSLIB.Topic({
                   ros : rbServer,
@@ -342,7 +336,7 @@
               });
 
               propSensorTopic.subscribe(function(message) {
-                console.log('Received message on ' + propSensorTopic.name + ': ' + message.data);
+                // console.log('Received message on ' + propSensorTopic.name + ': ' + message.data);
               });
 
         });
@@ -388,29 +382,6 @@
                 y : 0.0,
                 z : 0.0
             }
-      });
-
-      var joyValue = new ROSLIB.Message({
-        axes : 
-          [ {axe1 : -0.0,
-            axe2 : -0.0,
-            axe3 : -0.0,
-            axe4 : -0.0,
-            axe5 : -0.0,
-            axe6 : -0.0}],
-        buttons : 
-          [ {button1: 0, 
-            button2: 0,
-            button3: 0,
-            button4: 0,
-            button5: 0,
-            button6: 0,
-            button7: 0,
-            button8: 0,
-            button9: 0,
-            button10: 0,
-            button11: 0,
-            button12: 0}]
       });
 
 
