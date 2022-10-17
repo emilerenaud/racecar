@@ -14,18 +14,18 @@ Client-side:
 -->
 
 <head>
-    <!-- Required meta tags -->
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <!-- Required meta tags -->
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
-    <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="css/bootstrap.min.css">
-    <link rel="stylesheet" href="css/dashboard.css">
-    <title>APP3 Racecar</title> 
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="css/bootstrap.min.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <title>APP3 Racecar</title>
 </head>
 
 <body>
-    
+
   <!-- Menu BEGIN-->
   <div class="collapse" id="navbarToggleExternalContent">
     <div class="bg-dark p-4">
@@ -33,11 +33,11 @@ Client-side:
       <!-- <div style="color: rgb(255, 255, 255)"> ROS master IP Adress :</div> -->
       <!-- <input id="ip_adress" placeholder="127.0.0.1"> </input> -->
       <!-- <form> -->
-        <label for="ip_adress" style="color: rgb(255, 255, 255)">ROS master IP Adress</label><br>
-        <input type="text" id="ip_adress" name="IP Adress"><br>
-        <button onclick="connectROS()" class="button-style"> Connectez</button>
+      <label for="ip_adress" style="color: rgb(255, 255, 255)">ROS master IP Adress</label><br>
+      <input type="text" id="ip_adress" name="IP Adress"><br>
+      <button onclick="connectROS()" class="button-style"> Connectez</button>
       <!-- </form> -->
-      </div>
+    </div>
   </div>
 
   <nav class="navbar navbar-dark bg-dark">
@@ -51,22 +51,22 @@ Client-side:
 
   <!-- Main layout BEGIN-->
   <div class="container-fluid">
-    <div class="row"> 
+    <div class="row">
       <div class="col-md-4 themed-grid-col">
         <div>
-          <h1 class="text-bold"> Status</h1>  
+          <h1 class="text-bold"> Status</h1>
           <div id="consoleLog" width="30%" class="background-color-iframe">
 
           </div>
           <button onclick="clearConsole()" class="button-style"> Effacez </button>
         </div>
-        
+
         <div id="buttonsControl">
           <h1 class="text-bold"> Contrôle</h1>
           <div class='row'>
             <button id="LFront" onclick="buttonEvent(this.id)" class="button-style"> Left Front</button>
             <button id="Front" onclick="buttonEvent(this.id)" class="button-style"> Front</button>
-            <button id="RFront" onclick="buttonEvent(this.id)", class="button-style"> Right Front</button>
+            <button id="RFront" onclick="buttonEvent(this.id)" , class="button-style"> Right Front</button>
           </div>
           <div class="row">
             <button id="Left" onclick="buttonEvent(this.id)" class="button-style">Left</button>
@@ -79,23 +79,24 @@ Client-side:
             <button id="RBack" onclick="buttonEvent(this.id)" class="button-style">Right Back</button>
           </div>
         </div>
-        
+
       </div>
-  
+
       <div class="col-md-8 themed-grid-col">
         <h1 class="text-bold"> Caméra</h1>
-        <img src="http://localhost:8080/stream?topic=/racecar/raspicam_node/image_raw" alt="No picture from Racecar" width="300" height="200"> 
+        <img src="http://localhost:8080/stream?topic=/racecar/raspicam_node/image_raw" alt="No picture from Racecar"
+          width="300" height="200">
         <!-- <video width="320" height="240" controls> -->
-          <!-- <source src="" type="video/mp4"> -->
-          <!-- <source src="movie.ogg" type="video/ogg"> -->
-          <!-- Your browser does not support the video tag. -->
+        <!-- <source src="" type="video/mp4"> -->
+        <!-- <source src="movie.ogg" type="video/ogg"> -->
+        <!-- Your browser does not support the video tag. -->
         <!-- </video>  -->
       </div>
     </div>
-    
+
   </div>
   <!-- Main layout END-->
-  
+
   <!-- JavaScript, import frameworks -->
   <!-- jQuery first, then Popper.js, then Bootstrap JS -->
   <script src="js/jquery-3.3.1.slim.min.js"></script>
@@ -106,73 +107,94 @@ Client-side:
 
   <!-- Custom scripts -->
   <script>
-      // Define some global variables
-      var rbServer = null;
-      var cmdVelTopic = null;
+    // Define some global variables
+    var rbServer = null;
+    var cmdVelTopic = null;
 
 
-      //Some initializations after the page has been shown
-      $(document).ready(function(){
-        document.getElementById("log").value = 'Default text\n'
+    //Some initializations after the page has been shown
+    $(document).ready(function () {
+      document.getElementById("log").value = 'Default text\n'
+    });
+    
+    var map = {}; // You could also use an array
+    onkeydown = onkeyup = function (e) {
+      e = e || event; // to deal with IE
+      map[e.keyCode] = e.type == 'keydown';
+      // console.log(map);
+      let linear = 0;
+      let angular = 0;
+      if (map[87]) // w
+        linear = 1;
+      if (map[65]) // a
+        angular = 1;
+      if (map[83]) // s
+        linear = -1;
+      if (map[68]) // d
+        angular = -1;
+
+      updateTwist(linear, angular);
+    }
+    // the last option dispatches the event to the listener first,
+    // then dispatches event to window  
+
+    // Define some functions
+    function connectROS() {
+      // This function connects to the rosbridge server
+      // document.getElementById('buttonReculez').style.backgroundColor = "white";
+      var ip = document.getElementById('ip_adress').value;
+      console.log(ip)
+      // document.getElementById('consoleLog').innerHTML += ip;
+      rbServer = new ROSLIB.Ros({
+        // Assuming ros server IP is 10.42.0.1
+        // url : 'ws://127.0.0.1:9090'
+        url: 'ws://' + ip + ':9090'
       });
 
-      // Define some functions
-      function connectROS() {
-          // This function connects to the rosbridge server
-        // document.getElementById('buttonReculez').style.backgroundColor = "white";
-        var ip = document.getElementById('ip_adress').value;
-        console.log(ip)
-        // document.getElementById('consoleLog').innerHTML += ip;
-        rbServer = new ROSLIB.Ros({
-            // Assuming ros server IP is 10.42.0.1
-          // url : 'ws://127.0.0.1:9090'
-          url : 'ws://' + ip + ':9090'
-        });
+      rbServer.on('connection', function () {
+        console.log('Connected to websocket server.');
 
-          rbServer.on('connection', function(){
-              console.log('Connected to websocket server.');
-
-              // These lines create a topic object as defined by roslibjs
-              cmdVelTopic = new ROSLIB.Topic({
-                  ros : rbServer,
-                  name : '/racecar/cmd_vel_abtr_2',
-                  messageType : 'geometry_msgs/Twist'
-              });
+        // These lines create a topic object as defined by roslibjs
+        cmdVelTopic = new ROSLIB.Topic({
+          ros: rbServer,
+          name: '/racecar/cmd_vel_abtr_2',
+          messageType: 'geometry_msgs/Twist'
         });
+      });
 
-          rbServer.on('error', function(error) {
-            console.log('Error connecting to websocket server: ', error);
-        });
+      rbServer.on('error', function (error) {
+        console.log('Error connecting to websocket server: ', error);
+      });
 
-        rbServer.on('close', function() {
-            console.log('Connection to websocket server closed.');
-        });
+      rbServer.on('close', function () {
+        console.log('Connection to websocket server closed.');
+      });
+    }
+
+    // These lines create a message that conforms to the structure of the Twist defined in our ROS installation
+    // It initalizes all properties to zero. They will be set to appropriate values before we publish this message
+
+    var twist = new ROSLIB.Message({
+      linear: {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0
+      },
+      angular: {
+        x: 0.0,
+        y: 0.0,
+        z: 0.0
       }
+    });
+    //Publishing loop cmd_vel at 5 Hz
+    setInterval(function () {
+      if (cmdVelTopic != null) {
 
-      // These lines create a message that conforms to the structure of the Twist defined in our ROS installation
-      // It initalizes all properties to zero. They will be set to appropriate values before we publish this message
-
-        var twist = new ROSLIB.Message({
-           linear : {
-                x : 0.0,
-                y : 0.0,
-                z : 0.0
-            },
-            angular : {
-                x : 0.0,
-                y : 0.0,
-                z : 0.0
-            }
-        });
-      //Publishing loop cmd_vel at 5 Hz
-      setInterval(function(){
-           if(cmdVelTopic != null)
-           {
-            
-             cmdVelTopic.publish(twist);
-           }
-      }, 200);
+        cmdVelTopic.publish(twist);
+      }
+    }, 200);
 
   </script>
 </body>
+
 </html>
