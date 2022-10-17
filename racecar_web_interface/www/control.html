@@ -88,7 +88,7 @@
           </div>
           <div class=" deadman-status-box">
             <div>
-              <button id="btn_deadman" class="deadman-button" onclick="addStatusList('deadman')"> Deadman</button>
+              <button id="btn_deadman" class="deadman-button" onclick="activateDeadman()"> Deadman</button>
             </div>
             <div class="deadman-activity-box">
               <i id="status-deadman" class="deadman-status-off" >Off </i>  
@@ -174,6 +174,7 @@
         if (map[32] === true){ 
           deadman = true;
           if(sent_flag === 0){
+            btn_deadman.style = "border-style:inset;";
             addStatusList("deadman");
             sent_flag = -1;
           }
@@ -210,6 +211,7 @@
         } 
 
         if (map[32] === false){
+          btn_deadman.style = null;
           deadman = false;
           twist.linear.x = 0.0;
           twist.angular.z = 0.0;
@@ -227,6 +229,17 @@
         resultList.append(`${name}: ${ip}`)
         resultList.append(document.createElement('br'));
       });
+
+      function activateDeadman() {
+
+        if (deadman === false){
+          deadman = true;
+          addStatusList("deadman");
+        } else {
+          deadman = false;
+          addStatusList("deadman");
+        }
+      }
 
       function addStatusList(value) {
 
@@ -261,20 +274,15 @@
 
             twist.angular.z = -1.0;
 
-          } else if ( deadman === false ){
-            twist.linear.x = 0.0;
-            twist.angular.z = 0.0;
-          }
-
-
+          } 
+   
+        } else {
+          twist.linear.x = 0.0;
+          twist.angular.z = 0.0;
         }
       }
       function eraseStatusList(){
         document.getElementById("command_list").innerHTML = null;
-      }
-
-      function closeWebSocket(){
-
       }
 
       function connectROS() {
@@ -332,11 +340,11 @@
           status_car.classList.add("offline-style");
           status_car.innerHTML = "Offline";
 
-          btn_forward.disabled = true;
-          btn_backward.disabled = true;
-          btn_left.disabled = true;
-          btn_right.disabled = true;
-          btn_deadman.disabled = true;
+          // btn_forward.disabled = true;
+          // btn_backward.disabled = true;
+          // btn_left.disabled = true;
+          // btn_right.disabled = true;
+          // btn_deadman.disabled = true;
         });
   
         rbServer.on('close', function() {
@@ -346,11 +354,11 @@
           status_car.classList.add("offline-style");
           status_car.innerHTML = "Offline";
 
-          btn_forward.disabled = true;
-          btn_backward.disabled = true;
-          btn_left.disabled = true;
-          btn_right.disabled = true;
-          btn_deadman.disabled = true;
+          // btn_forward.disabled = true;
+          // btn_backward.disabled = true;
+          // btn_left.disabled = true;
+          // btn_right.disabled = true;
+          // btn_deadman.disabled = true;
 
         });
 
@@ -378,7 +386,7 @@
         {
           cmdVelTopic.publish(twist);
         }
-        connectROS(); // PUT IN SETINTERVAL
+        connectROS();
 
       }, 200);
 

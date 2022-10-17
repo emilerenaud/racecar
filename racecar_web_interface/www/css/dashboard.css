@@ -130,6 +130,12 @@ body {
   transition: opacity 0.15s;
   border:none;
 }
+.deadman-button:hover{
+  opacity: 50%;
+}
+.deadman-button:active{
+  opacity: 10%;
+}
 .deadman-status-off{
   background-color: red;
   display: flex;
@@ -192,7 +198,7 @@ body {
   animation: spin 2s linear infinite;
 }
 .online-style {
-  background-color: rgb(10, 229, 47);
+  background-color: green;
   margin-left: 25px;
   margin-top: 10px;
   display: flex;
@@ -205,7 +211,7 @@ body {
   border:none;
 }
 .offline-style {
-  background-color: rgb(229, 21, 10);
+  background-color: red;
   margin-left: 25px;
   margin-top: 10px;
   display: flex;
