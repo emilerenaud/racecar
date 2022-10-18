@@ -56,6 +56,7 @@ function writeConsole(text)
 function clearConsole()
 {
   document.getElementById('consoleLog').innerHTML = '';
+  disableControlButtons(0);
 }   
 
 function updateTwist(linear,angular)

@@ -110,8 +110,12 @@ Client-side:
     // Define some global variables
     var rbServer = null;
     var cmdVelTopic = null;
+    var connected = false;
 
-
+    if(connected == false)
+    {
+      disableControlButtons(1);
+    }
     //Some initializations after the page has been shown
     $(document).ready(function () {
       document.getElementById("log").value = 'Default text\n'
