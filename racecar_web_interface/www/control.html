@@ -97,7 +97,7 @@
         </div>  
       </div>
   
-      <div class="col-md-8 themed-grid-col" style="background-color:rgb(216, 216, 228)">
+      <div class="col-md-8 themed-grid-col">
         <div>
           <h1 class="text-bold"> Caméra</h1>
         </div>
@@ -140,7 +140,6 @@
 -->
   <script>
 
-    
     // Define some global variables
     var rbServer = null;
     var cmdVelTopic = null;
@@ -149,18 +148,199 @@
     var sent_flag = 0;
     var map = {};
 
-      let btn_forward = document.getElementById("btn_forward");
-      let btn_left = document.getElementById("btn_left");
-      let btn_backward = document.getElementById("btn_backward");
-      let btn_right = document.getElementById("btn_right");
-      let btn_deadman= document.getElementById("btn_deadman");
-      let status_deadman = document.getElementById("status-deadman");
+    let btn_forward = document.getElementById("btn_forward");
+    let btn_left = document.getElementById("btn_left");
+    let btn_backward = document.getElementById("btn_backward");
+    let btn_right = document.getElementById("btn_right");
+    let btn_deadman= document.getElementById("btn_deadman");
+    let status_deadman = document.getElementById("status-deadman");
+    let camera = document.getElementById("camera_img");
+    
+    const resultList = document.getElementById("results");
+
+    //Some initializations after the page has been shown
+    $(document).ready(function(){
+      // document.getElementById("log").value = 'Default text\n'
+
+      // Disable buttons at beginning
+      // btn_forward.disabled = true;
+      // btn_backward.disabled = true;
+      // btn_left.disabled = true;
+      // btn_right.disabled = true;
+      // btn_deadman.disabled = true;
+
+      new URLSearchParams(window.location.search).forEach((ip,name) => {
+      ip_addr = ip
+      resultList.append(`${name}: ${ip}`)
+      resultList.append(document.createElement('br'));
+
+      });
+
+    });
+
+    onkeydown = onkeyup = function(event){
+      map[event.keyCode] = event.type == 'keydown';
+
+      if (map[32] === true){ 
+        deadman = true;
+        if(sent_flag === 0){
+          btn_deadman.style = "border-style:inset;";
+          addStatusList("deadman");
+          sent_flag = -1;
+        }
+        if(map[87] === true && sent_flag !== 1){
+          addStatusList("forward");
+          sent_flag = 1;
+
+        }
+        if (map[83] === true && sent_flag !== 2){
+          addStatusList("backward");
+          sent_flag = 2;  
       
-      //Some initializations after the page has been shown
-      $(document).ready(function(){
-        // document.getElementById("log").value = 'Default text\n'
+        }
+        if (map[65] === true && sent_flag !== 3){
+          addStatusList("left");
+          sent_flag = 3;
+
+        }
+        if (map[68] === true && sent_flag !== 4){
+          addStatusList("right");
+          sent_flag = 4;
+
+        }
+        if((map[87] === false && map[83] === false)||(map[87] === false && map[83] === undefined)||(map[87] === undefined && map[83] === false)){
+          twist.linear.x = 0;
+
+        }
+
+        if ((map[65] === false && map[68] === false)||(map[65] === false && map[68] === undefined)||(map[65] === undefined && map[68] === false)){
+          twist.angular.z = 0;
+
+        }
+        
+      } 
+
+      if (map[32] === false){
+        btn_deadman.style = null;
+        deadman = false;
+        twist.linear.x = 0;
+        twist.angular.z = 0;
+        addStatusList("deadman");
+        sent_flag=0;
+      }
+
+  }
+
+    function activateDeadman() {
+
+      if (deadman === false){
+        deadman = true;
+        addStatusList("deadman");
+      } else {
+        deadman = false;
+        addStatusList("deadman");
+      }
+    }
+
+    function addStatusList(value) {
+
+      if( value === "deadman"){
+
+        if (deadman === false){
+          status_deadman.classList.remove("deadman-status-on");
+          status_deadman.classList.add("deadman-status-off");
+          status_deadman.innerHTML = "Off";
+          
+        } else if(deadman === true){
+        
+          status_deadman.classList.remove("deadman-status-off");
+          status_deadman.classList.add("deadman-status-on");
+          status_deadman.innerHTML = "On";
+        }
+      }
+      // document.getElementById("command_list").scrollTop = document.getElementById("command_list").scrollHeight;
+      if( deadman === true ){
+        document.getElementById("command_list").innerHTML += ("<li>" + value + "</li>");
+        if ( value === "forward"){
+          twist.linear.x = 1;
+
+        } else if( value === "left"){
+
+          twist.angular.z = 1;
+
+        } else if( value === "backward"){
+          twist.linear.x = -1;
+
+        } else if( value === "right"){
+
+          twist.angular.z = -1;
+
+        } 
   
-        // Disable buttons in case of
+      } else {
+        twist.linear.x = 0;
+        twist.angular.z = 0;
+      }
+    }
+    function eraseStatusList(){
+      document.getElementById("command_list").innerHTML = null;
+    }
+
+    function connectROS() {
+      // This function connects to the rosbridge server
+
+      let status_car = document.getElementById("status-car");
+      
+    if ( rbServer === null){
+
+      rbServer = new ROSLIB.Ros({
+
+        url : 'ws://'+ip_addr+':9090'
+      });
+
+      camera.src = `http://${ip_addr}:8080/stream?topic=/racecar/raspicam_node/image&type=ros_compressed`;
+
+    }
+    
+    if ( rbServer.isConnected === false ){
+
+      rbServer.on('connection', function(){
+            console.log('Connected to websocket server.');
+
+            status_car.classList.remove("offline-style");
+            status_car.classList.add("online-style")
+            status_car.innerHTML = "Online";
+
+            btn_forward.disabled = false;
+            btn_backward.classList.disabled = false;
+            btn_left.classList.disabled = false;
+            btn_right.classList.disabled = false;
+            btn_deadman.classList.disabled = false;
+
+            // These lines create a topic object as defined by roslibjs
+            cmdVelTopic = new ROSLIB.Topic({
+                ros : rbServer,
+                name : '/racecar/cmd_vel_abtr_2',
+                messageType : 'geometry_msgs/Twist'
+            });
+
+            propSensorTopic = new ROSLIB.Topic({
+                ros : rbServer,
+                name : '/racecar/prop_sensors',
+                messageType : 'std_msgs/Float32MultiArray'
+            });
+
+            propSensorTopic.subscribe(function(message) {
+              // console.log('Received message on ' + propSensorTopic.name + ': ' + message.data);
+            });
+
+      });
+      rbServer.on('error', function(error) {
+        console.log('Error connecting to websocket server: ', error);
+        status_car.classList.remove("online-style");
+        status_car.classList.add("offline-style");
+        status_car.innerHTML = "Offline";
+
         // btn_forward.disabled = true;
         // btn_backward.disabled = true;
         // btn_left.disabled = true;
@@ -168,234 +348,49 @@
         // btn_deadman.disabled = true;
       });
 
-      onkeydown = onkeyup = function(event){
-        map[event.keyCode] = event.type == 'keydown';
+      rbServer.on('close', function() {
 
-        if (map[32] === true){ 
-          deadman = true;
-          if(sent_flag === 0){
-            btn_deadman.style = "border-style:inset;";
-            addStatusList("deadman");
-            sent_flag = -1;
-          }
-          if(map[87] === true && sent_flag !== 1){
-            addStatusList("forward");
-            sent_flag = 1;
+        console.log('Connection to websocket server closed.');
+        status_car.classList.remove("online-style");
+        status_car.classList.add("offline-style");
+        status_car.innerHTML = "Offline";
 
-          }
-          if (map[83] === true && sent_flag !== 2){
-            addStatusList("backward");
-            sent_flag = 2;  
-       
-          }
-          if (map[65] === true && sent_flag !== 3){
-            addStatusList("left");
-            sent_flag = 3;
+        // btn_forward.disabled = true;
+        // btn_backward.disabled = true;
+        // btn_left.disabled = true;
+        // btn_right.disabled = true;
+        // btn_deadman.disabled = true;
 
-          }
-          if (map[68] === true && sent_flag !== 4){
-            addStatusList("right");
-            sent_flag = 4;
-
-          }
-          if((map[87] === false && map[83] === false)||(map[87] === false && map[83] === undefined)||(map[87] === undefined && map[83] === false)){
-            twist.linear.x = 0;
-
-          }
-
-          if ((map[65] === false && map[68] === false)||(map[65] === false && map[68] === undefined)||(map[65] === undefined && map[68] === false)){
-            twist.angular.z = 0;
-
-          }
-          
-        } 
-
-        if (map[32] === false){
-          btn_deadman.style = null;
-          deadman = false;
-          twist.linear.x = 0;
-          twist.angular.z = 0;
-          addStatusList("deadman");
-          sent_flag=0;
-        }
-
-    }
-
-      const resultList = document.getElementById("results");
-      let camera = document.getElementById("camera_img")
-
-      new URLSearchParams(window.location.search).forEach((ip,name) => {
-        ip_addr = ip
-        resultList.append(`${name}: ${ip}`)
-        resultList.append(document.createElement('br'));
       });
 
-      function activateDeadman() {
+    }
+  }
 
-        if (deadman === false){
-          deadman = true;
-          addStatusList("deadman");
-        } else {
-          deadman = false;
-          addStatusList("deadman");
-        }
-      }
-
-      function addStatusList(value) {
-
-        if( value === "deadman"){
-
-          if (deadman === false){
-            status_deadman.classList.remove("deadman-status-on");
-            status_deadman.classList.add("deadman-status-off");
-            status_deadman.innerHTML = "Off";
-            
-          } else if(deadman === true){
-         
-            status_deadman.classList.remove("deadman-status-off");
-            status_deadman.classList.add("deadman-status-on");
-            status_deadman.innerHTML = "On";
+    var twist = new ROSLIB.Message({
+          linear : {
+              x : 0.0,
+              y : 0.0,
+              z : 0.0
+          },
+          angular : {
+              x : 0.0,
+              y : 0.0,
+              z : 0.0
           }
-        }
-        // document.getElementById("command_list").scrollTop = document.getElementById("command_list").scrollHeight;
-        if( deadman === true ){
-          console.log(value);
-          document.getElementById("command_list").innerHTML += ("<li>" + value + "</li>");
-          if ( value === "forward"){
-            twist.linear.x = 1;
-  
-          } else if( value === "left"){
+    });
 
-            twist.angular.z = 1;
-  
-          } else if( value === "backward"){
-            twist.linear.x = -1;
-  
-          } else if( value === "right"){
 
-            twist.angular.z = -1;
-
-          } 
-   
-        } else {
-          twist.linear.x = 0;
-          twist.angular.z = 0;
-          // joyValue.buttons.button5 = 0;
-          // joyValue.buttons.button7 = 0;
-          // joyTopic.publish(joyValue);
-        }
-      }
-      function eraseStatusList(){
-        document.getElementById("command_list").innerHTML = null;
-      }
-
-      function connectROS() {
-        // This function connects to the rosbridge server
-
-        let status_car = document.getElementById("status-car");
+    
+    //Publishing loop cmd_vel at 5 Hz
+    setInterval(function(){
+      if(cmdVelTopic != null)
+      {
+        cmdVelTopic.publish(twist);
         
-      if ( rbServer === null){
-
-        rbServer = new ROSLIB.Ros({
-            // Assuming ros server IP is 10.42.0.1
-          url : 'ws://'+ip_addr+':9090'
-        });
-
-        camera.src = `http://${ip_addr}:8080/stream?topic=/racecar/raspicam_node/image&type=ros_compressed`;
-
       }
-      
-      if ( rbServer.isConnected === false ){
+      connectROS();
 
-        rbServer.on('connection', function(){
-              console.log('Connected to websocket server.');
-
-              status_car.classList.remove("offline-style");
-              status_car.classList.add("online-style")
-              status_car.innerHTML = "Online";
-
-              btn_forward.disabled = false;
-              btn_backward.classList.disabled = false;
-              btn_left.classList.disabled = false;
-              btn_right.classList.disabled = false;
-              btn_deadman.classList.disabled = false;
-  
-              // These lines create a topic object as defined by roslibjs
-              cmdVelTopic = new ROSLIB.Topic({
-                  ros : rbServer,
-                  name : '/racecar/cmd_vel_abtr_2',
-                  messageType : 'geometry_msgs/Twist'
-              });
-
-              
-
-              propSensorTopic = new ROSLIB.Topic({
-                  ros : rbServer,
-                  name : '/racecar/prop_sensors',
-                  messageType : 'std_msgs/Float32MultiArray'
-              });
-
-              propSensorTopic.subscribe(function(message) {
-                // console.log('Received message on ' + propSensorTopic.name + ': ' + message.data);
-              });
-
-        });
-        rbServer.on('error', function(error) {
-          console.log('Error connecting to websocket server: ', error);
-          status_car.classList.remove("online-style");
-          status_car.classList.add("offline-style");
-          status_car.innerHTML = "Offline";
-
-          // btn_forward.disabled = true;
-          // btn_backward.disabled = true;
-          // btn_left.disabled = true;
-          // btn_right.disabled = true;
-          // btn_deadman.disabled = true;
-        });
-  
-        rbServer.on('close', function() {
-
-          console.log('Connection to websocket server closed.');
-          status_car.classList.remove("online-style");
-          status_car.classList.add("offline-style");
-          status_car.innerHTML = "Offline";
-
-          // btn_forward.disabled = true;
-          // btn_backward.disabled = true;
-          // btn_left.disabled = true;
-          // btn_right.disabled = true;
-          // btn_deadman.disabled = true;
-
-        });
-
-      }
-    }
-
-      var twist = new ROSLIB.Message({
-           linear : {
-                x : 0.0,
-                y : 0.0,
-                z : 0.0
-            },
-            angular : {
-                x : 0.0,
-                y : 0.0,
-                z : 0.0
-            }
-      });
-
-
-      
-      //Publishing loop cmd_vel at 5 Hz
-      setInterval(function(){
-        if(cmdVelTopic != null)
-        {
-          cmdVelTopic.publish(twist);
-          
-        }
-        connectROS();
-
-      }, 200);
+    }, 200);
 
   </script>
 </body>
