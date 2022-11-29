@@ -21,7 +21,8 @@ def main():
     grid = np.reshape(response.map.data, [response.map.info.height, response.map.info.width])
     
     brushfireMap = brushfire(grid)
-        
+    
+    
     # Export brusfire map for visualization
     # Adjust color: 0 (black) = obstacle, 10-255 (white) = safest cells
     maximum = np.amax(brushfireMap)
