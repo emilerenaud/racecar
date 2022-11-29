@@ -60,17 +60,17 @@ const int dri_dir_pin     = 42; //
 
 //TODO: VOUS DEVEZ DETERMINEZ DES BONS PARAMETRES SUIVANTS
 const float filter_rc  =  0.1;
-const float vel_kp     =  5.0; 
-const float vel_ki     =  0.0; 
-const float vel_kd     =  0.0;
-const float pos_kp     =  6.0; //6.6
-const float pos_kd     =  0.0;
-const float pos_ki     =  0.5; 
-const float pos_ei_sat =  10000.0; 
+const float vel_kp     =  100.0;
+const float vel_ki     =  5.0;
+//const float vel_kd     =  50.0;
+const float pos_kp     =  160.0;
+const float pos_kd     =  70.0;
+const float pos_ki     =  4.0;
+const float pos_ei_sat =  10.0;
+const float prct_acpt_err = 0.01; // Percent of acceptable error (when to reset error integral)
 
 // Loop period 
 const unsigned long time_period_low   = 2;    // 500 Hz for internal PID loop
-const float dt = time_period_low/1000.0;       // Time between loops PID
 const unsigned long time_period_high  = 10;   // 100 Hz  for ROS communication
 const unsigned long time_period_com   = 1000; // 1000 ms = max com delay (watchdog)
 
@@ -89,7 +89,7 @@ const double batteryV  = 8;
 const double maxAngle  = 40*(2*3.1416)/360;    //max steering angle in rad
 const double rad2pwm   = (pwm_zer_ser-pwm_min_ser)/maxAngle;
 const double volt2pwm  = (pwm_zer_dri-pwm_min_dri)/batteryV;
-const double tick2m    = 0.000002752; // To confirm
+const double tick2m    = 0.000002600; // To confirm
 
 ///////////////////////////////////////////////////////////////////
 // Memory
@@ -116,6 +116,7 @@ float vel_old   = 0;
 
 float vel_error_int = 0 ;
 float pos_error_int = 0;
+float pos_error_old = 0;
 
 // Loop timing
 unsigned long time_now       = 0;
@@ -123,8 +124,14 @@ unsigned long time_last_low  = 0;
 unsigned long time_last_high = 0;
 unsigned long time_last_com  = 0; //com watchdog
 
+unsigned long dt_real = 0;
+signed long ticks_dt = 0;
+
+float pos_error_ddt_prev = 0.0;
+float pos_ref, pos_error, pos_error_ddt;
+
 // For odometry
-signed long enc_last_high   = 0;
+signed long enc_last_high = 0;
 
 ///////////////////////////////////////////////////////////////////
 // Encoder init/read/reset functions
@@ -319,15 +326,12 @@ void ctl(){
   pos_now = (float) enc_now * tick2m;
   
   // Velocity computation
-
-  //TODO: VOUS DEVEZ COMPLETEZ LA DERIVEE FILTRE ICI
-  float vel_raw = ((enc_now - enc_old) * tick2m) / (float)time_period_low * 1000.0;
-  float alpha   = 0.5; 
-  float vel_fil = (alpha * vel_raw) + ((1-alpha) * vel_old);
-  vel_fil = vel_fil/2.0;
-  vel_old = vel_fil;
+  double vel_raw = (enc_now - enc_old) * tick2m / (dt_real / 1000.0);
+  float alpha   = dt_real / (filter_rc + dt_real);
+  float vel_fil = vel_raw * alpha + (1 - alpha) * vel_old;
+  
   // Propulsion Controllers
- 
+  
   //////////////////////////////////////////////////////
   if (ctl_mode == 0 ){
     // Zero output
@@ -343,11 +347,11 @@ void ctl(){
     // Fully Open-Loop
     // Commands received in [Volts] directly
     dri_cmd    = dri_ref;
-    dri_pwm    = cmd2pwm( dri_cmd ) ; 
+    dri_pwm    = cmd2pwm( dri_cmd ) ;
     
     // reset integral actions
     vel_error_int = 0;
-    pos_error_int = 0 ;
+    pos_error_int = 0;
   }
   //////////////////////////////////////////////////////
   else if (ctl_mode == 2 ){
@@ -356,40 +360,53 @@ void ctl(){
     
     float vel_ref, vel_error;
 
-    //TODO: VOUS DEVEZ COMPLETEZ LE CONTROLLEUR SUIVANT
-    vel_ref        = dri_ref; 
-    vel_error      = vel_ref - vel_fil;
-    dri_cmd        = vel_kp * vel_error; // proportionnal only
+    vel_ref       = dri_ref; 
+    vel_error     = vel_ref - vel_fil;
+    vel_error_int += vel_error * (dt_real / 1000.0);
+    if (vel_error < vel_ref * prct_acpt_err)
+    {
+      vel_error_int = 0;
+    }
 
-    dri_pwm    = cmd2pwm( dri_cmd ) ; 
+    // Calculate the command
+    dri_cmd = vel_kp * vel_error + vel_ki * vel_error_int;
+    
+    dri_pwm = cmd2pwm( dri_cmd ) ;
 
   }
   ///////////////////////////////////////////////////////
   else if (ctl_mode == 3){
     // Low-level Position control
     // Commands received in [m] setpoints
-    
-    float pos_ref, pos_error, pos_error_ddt;
 
-    //TODO: VOUS DEVEZ COMPLETEZ LE CONTROLLEUR SUIVANT
     pos_ref       = dri_ref; 
-    pos_error     = pos_ref - pos_now; // TODO
-    pos_error_ddt = 0; // TODO
-    pos_error_int += pos_error*dt; // TODO
+    pos_error     = pos_ref - pos_now; //remaining distance
+    pos_error_int += pos_error * (dt_real / 1000.0);
+    pos_error_ddt = (pos_error - pos_error_old) / (dt_real / 1000.0);
+
+    // Filter the derivative
+    float pos_error_ddt_fil = pos_error_ddt * alpha + (1 - alpha) * pos_error_ddt_prev;
+    pos_error_ddt_prev = pos_error_ddt_fil;
+    
+    /*
+    if (pos_error < pos_ref * prct_acpt_err)
+    {
+      pos_error_int = 0;
+    }
+    */
+
+    pos_error_old = pos_error; // we may need to reset pos_error_old at some point
     
     // Anti wind-up
-    if ( pos_error_int > pos_ei_sat ){
+    if ( pos_error_int > pos_ei_sat )
+    {
       pos_error_int = pos_ei_sat;
     }
     
-    //dri_cmd = 0; // TODO
-    dri_cmd        = pos_kp * pos_error  + pos_ki*pos_error_int; // proportionnal only
-    if(dri_cmd > 4.5)
-      dri_cmd = 4.5;
-    if(dri_cmd < -7)
-      dri_cmd = -7;
+    // Calculate the command
+    dri_cmd = pos_kp * pos_error + pos_ki * pos_error_int + pos_kd * pos_error_ddt_fil;
     
-    dri_pwm = cmd2pwm( dri_cmd )  ;
+    dri_pwm = cmd2pwm( dri_cmd ) ;
   }
   ///////////////////////////////////////////////////////
   else if (ctl_mode == 4){
@@ -401,31 +418,17 @@ void ctl(){
     vel_error_int = 0 ;
     pos_error_int = 0 ;
     
-    //dri_pwm    = pwm_zer_dri ;
-     dri_pwm  = cmd2pwm( dri_cmd ) ;
+    dri_pwm    = pwm_zer_dri ;
   }
-    //////////////////////////////////////////////////////
-//  else if (ctl_mode == 7 ){
-//    // Fully Open-Loop
-//    // Commands received in [Volts] directly
-//    dri_cmd    = 5;
-//    dri_pwm    = cmd2pwm( dri_cmd ) ;
-//    
-//    // reset integral actions
-//    vel_error_int = 0;
-//    pos_error_int = 0 ;
-//  }
-//    //////////////////////////////////////////////////////
-//  else if (ctl_mode == 8 ){
-//    // Fully Open-Loop
-//    // Commands received in [Volts] directly
-//    dri_cmd    = 7;
-//    dri_pwm    = cmd2pwm( dri_cmd ) ;
-//    
-//    // reset integral actions
-//    vel_error_int = 0;
-//    pos_error_int = 0 ;
-//  }
+  ////////////////////////////////////////////////////////
+  else if (ctl_mode == 5){
+    // APP4 Closed-loop speed
+    // Instead of using V calculated on the Pi, we calculate it here
+
+    // V = N11 * vref - K12 * v;
+    dri_cmd = 10.1874 * dri_ref - 8.2422 * vel_fil;
+    dri_pwm = cmd2pwm(dri_cmd);
+  }
   ////////////////////////////////////////////////////////
   else {
     // reset integral actions
@@ -512,8 +515,8 @@ void loop(){
   ////////////////////////////////////////
   // Low-level controller
   ///////////////////////////////////////
-
-  if (( time_now - time_last_low ) > time_period_low ) {
+  dt_real = time_now-time_last_low;
+  if ((dt_real) > time_period_low ) {
     
     ctl(); // one control tick
 
@@ -535,13 +538,13 @@ void loop(){
     prop_sensors_data[2] = dri_ref; // set point received by arduino
     prop_sensors_data[3] = dri_cmd; // drive set point in volts
     prop_sensors_data[4] = dri_pwm; // drive set point in pwm
-    prop_sensors_data[5] = enc_now; // raw encoder counts
-    prop_sensors_data[6] = ser_ref; // steering angle (don't remove/change, used for GRO830)
+    prop_sensors_data[5] = pos_error; // raw encoder counts
+    prop_sensors_data[6] = ser_ref; // steering angle
     prop_sensors_data[7] = (float)( time_now - time_last_com ); // for com debug
-    prop_sensors_data[8] = (float)dt; // time elapsed since last publish (don't remove/change, used for GRO830)
-    prop_sensors_data[9] = (enc_now - enc_last_high) * tick2m; // distance travelled since last publish (don't remove/change, used for GRO830)
+    prop_sensors_data[8] = (float)dt; // time elapsed since last publish
+    prop_sensors_data[9] = (enc_now - enc_last_high) * tick2m; // distance travelled since last publish
 
-    // Read IMU (don't remove/change, used for GRO830)
+    // Read IMU
     imu.readSensor();
     prop_sensors_data[10] = imu.getAccelX_mss();
     prop_sensors_data[11] = imu.getAccelY_mss();

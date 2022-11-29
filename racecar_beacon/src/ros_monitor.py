@@ -1,251 +1,216 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import rospy
-import roslaunch
 import socket
+import struct
 import threading
-import time
 
-from struct import *
 from nav_msgs.msg import Odometry
 from sensor_msgs.msg import LaserScan
 from tf.transformations import euler_from_quaternion
 
-# GLOBAL CONSTANTS
-HEADER = 128  # réponse de 16 octets, donc 128 bits
-FORMAT = "utf-8"
-DISCONNECT_MESSAGE = "DISCONNECT"
-MAX_CONNECTIONS = 10
-
-# GLOBAL REMOTE REQUEST CONSTANTS
-
-REMOTE_REQUEST_PORT = 65432
-REMOTE_REQUEST_HOST = socket.gethostbyname(socket.gethostname()+".local") #Put 10.0.0.1 if doesnt work
-REMOTE_REQUEST_ADDR = (REMOTE_REQUEST_HOST, REMOTE_REQUEST_PORT)
-
-# GLOBAL POS_BROADCAST CONSTANTS
-
-POS_BROADCAST_PORT = 65431
-POS_BROADCAST_HOST = ""
-
-# SERVER CREATION
-
-# socket.AF_INET means we're using IPv4 ( IP version 4 )
-# socket.SOCK_STREAM means we're using TCP protocol for data transfer
-
-REMOTE_REQUEST_SERVER = socket.socket(socket.AF_INET, socket.SOCK_STREAM) 
-REMOTE_REQUEST_SERVER.bind(REMOTE_REQUEST_ADDR)
-
-POS_BROADCAST_SERVER = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
-POS_BROADCAST_SERVER.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
 def quaternion_to_yaw(quat):
-    # Uses TF transforms to convert a quaternion to a rotation angle around Z.
-    # Usage with an Odometry message: 
-    #   yaw = quaternion_to_yaw(msg.pose.pose.orientation)
-    (roll, pitch, yaw) = euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])
-    return yaw
+    return euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])[2]
+
 
 class ROSMonitor:
-
     def __init__(self):
-        # Add your subscriber here (odom? laserscan?):
-        self.sub_odom = rospy.Subscriber("/racecar/odometry/filtered", Odometry, self.odom_cb)
-        self.sub_laser = rospy.Subscriber("/racecar/scan", LaserScan, self.laser_cb)
+        # Subscribers :
+        self.sub_odom = rospy.Subscriber("/odometry/filtered", Odometry, self.odom_cb)
+        self.sub_laser = rospy.Subscriber("/scan", LaserScan, self.scan_cb)
+        # self.sub_odom = rospy.Subscriber("/racecar/odometry/filtered",Odometry,
+                                         self.update_position)
+        # self.sub_laser = rospy.Subscriber("/racecar/scan", LaserScan, 
+                                          self.detect_obstacle)
 
-        # Current robot state:
-        self.id = 0xFFFF
+        # Current robot state :
+        self.id = 12345
         self.pos = (0, 0, 0)
         self.obstacle = False
-        self.rate = rospy.Rate(1)
-
 
         # Params :
-        # self.remote_request_port = rospy.get_param("remote_request_port", REMOTE_REQUEST_PORT)
-        # self.pos_broadcast_port  = rospy.get_param("pos_broadcast_port", POS_BROADCAST_PORT)
+        self.remote_request_port = rospy.get_param("remote_request_port", 65432)
+        self.remote_request_host = rospy.get_param("remote_request_host", "10.0.1.31")
+        self.pos_broadcast_port = rospy.get_param("pos_broadcast_port", 65431)
+        self.pos_broadcast_host = rospy.get_param("pos_broadcast_host", "10.0.1.255")
+
+        # Sockets :
+        self.pos_broadcast_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.pos_broadcast_socket.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+        self.pos_broadcast_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+        # Thread for RemoteRequest handling :
+        self.rr_thread = threading.Thread(target=self.rr_loop)
+        self.rr_thread.daemon = True # To be able to use Ctrl-C to stop the program
+        self.rr_thread.start()
+
+        # Creates a ROS Timer that will call PositionBroadcast every 1.0 sec:
+        self.timer = rospy.Timer(rospy.Duration(1.0), self.position_broadcast)
 
         print("ROSMonitor started.")
 
-        self.get_site_number(REMOTE_REQUEST_HOST)
-
-        # Thread for RemoteRequest handling:
-        self.rr_thread = threading.Thread(
-            target=self.wait_for_connection, daemon = True).start()
-
-        # Thread for VehicleTracking handling:
-        self.vt_thread = threading.Thread(
-            target=self.broadcast, args = (self.rate,), daemon = True).start()
-
-    def get_site_number(self, address_string):
-
-        """Gets site number to broadcast to good IP
-
-        Args:
-            address_string (string): Gets REMOTE_REQUEST host IP
-        """   
-
-        global POS_BROADCAST_HOST
-        dot_counter = 0
-        site_number = ""
-        for character in address_string:
-            if dot_counter == 2 and character != ".":
-                site_number = site_number + character
-            if character == ".":
-                dot_counter = dot_counter + 1
-        POS_BROADCAST_HOST = "10.0."+ site_number+".255"
-
-    """
-    .########..########...#######.....###....########...######.....###.....######..########
-    .##.....##.##.....##.##.....##...##.##...##.....##.##....##...##.##...##....##....##...
-    .##.....##.##.....##.##.....##..##...##..##.....##.##........##...##..##..........##...
-    .########..########..##.....##.##.....##.##.....##.##.......##.....##..######.....##...
-    .##.....##.##...##...##.....##.#########.##.....##.##.......#########.......##....##...
-    .##.....##.##....##..##.....##.##.....##.##.....##.##....##.##.....##.##....##....##...
-    .########..##.....##..#######..##.....##.########...######..##.....##..######.....##...
-    """
-    
     def odom_cb(self, msg):
-        """Feeds ros_monitor node odometry position to self.pos
+        x = msg.pose.pose.position.x
+        y = msg.pose.pose.position.y
+        theta = quaternion_to_yaw(msg.pose.pose.orientation)
+        self.pos = (x, y, theta)
 
-        Args:
-            msg (Odometry): Gets message as subscriber of "/odometry/filtered" topic
-        """
+    def scan_cb(self, msg):
+        self.obstacle = min(msg.ranges) < 1
 
-        yaw = quaternion_to_yaw(msg.pose.pose.orientation)
-        self.pos = (msg.pose.pose.position.x,msg.pose.pose.position.y,yaw)
-        
-    def laser_cb(self,msg):
-        """Feeds ros_monitor node  scan for the self.obstacle
-
-        Args:
-            msg (LaserScan): Gets message as subscriber of "/rate" topic
-        """
-
-        rangesValues = msg.ranges
-        for data in rangesValues:
-            if data < 1:
-                self.obstacle = 1
-                break
-            else:
-                self.obstacle = 0
-
-    def broadcast(self, rate):
-        """Broadcast vehicle position and server IP 
-
-        Args:
-            rate (rospy.Rate): Send a message every 1Hz
-        """        
-
-        print(f"[BROADCAST] Server is broadcasting on {POS_BROADCAST_HOST}")
-
-        while True:
-
-            msg = pack(">fffi",self.pos[0],self.pos[1],self.pos[2],self.id)
-            POS_BROADCAST_SERVER.sendto(msg, (POS_BROADCAST_HOST, POS_BROADCAST_PORT ))
-            rate.sleep()
-
-    """
-    ..######..##.......####.########.##....##.########
-    .##....##.##........##..##.......###...##....##...
-    .##.......##........##..##.......####..##....##...
-    .##.......##........##..######...##.##.##....##...
-    .##.......##........##..##.......##..####....##...
-    .##....##.##........##..##.......##...###....##...
-    ..######..########.####.########.##....##....##...
-    """
-
-    def wait_for_connection(self):
-
-        """
-        Waits for client to connect to server, then starts a thread to handle client messages when connected
-        """
-
-        self.id = unpack("!i", socket.inet_aton(REMOTE_REQUEST_HOST))[0]
-        REMOTE_REQUEST_SERVER.listen(MAX_CONNECTIONS)
-
-        print(f"[LISTENING] Server is listenning for client on {REMOTE_REQUEST_HOST}")
+    def rr_loop(self):
+        self.rr_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.rr_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self.rr_socket.bind((self.remote_request_host, self.remote_request_port))
 
         while True:
             try:
-                conn, addr = REMOTE_REQUEST_SERVER.accept()
+                # Start the connection
+                self.rr_socket.listen(1)
+                (conn, addr) = self.rr_socket.accept()
 
-                print(f"[CONNECTION] {addr[0]} connected to the server")
+                stop = False
+                while not stop:
+                    # Get the request code
+                    cmd = conn.recv(1024).decode()
 
-                thread = threading.Thread(
-                    target=self.handle_client, args=(conn, addr), daemon= True).start()
-    
-            except Exception as e:
-                print("[EXCEPTION]", e)
-                break
+                    # Get the info
+                    if cmd == "RPOS":
+                        msg = self.get_position()
+                    elif cmd == "OBSF":
+                        msg = self.get_obstacle()
+                    elif cmd == "RBID":
+                        msg = self.get_id()
+                    elif cmd == "exit":
+                        msg = self.get_invalid_msg()
+                        stop = True
+                    else:
+                        msg = self.get_invalid_msg()
 
-        print("SERVER CRASHED")
-        socket.close()
+                    # Send the message
+                    conn.send(msg)
 
-    def handle_client(self, socket, addr):
-        """Handles the mesage received by the client
+                # Close the connection
+                conn.close()
+            except socket.timeout:
+                pass
 
-        Args:
-            socket (socket): Has client info
-            addr (tuple(IP,port)): Has IP and port number to client connection
-        """
+    def get_position(self):
+        return struct.pack("!3f4x", self.pos[0], self.pos[1], self.pos[2])
 
-        socket.send(
-            "[CONNECTION] Connection to ROSMonitor sucessful:\n".encode(FORMAT))
+    def get_obstacle(self):
+        return struct.pack("!I12x", 1 if self.obstacle else 0)
 
-        while True:
+    def get_id(self):
+        return struct.pack("!I12x", self.id)
 
-            try:
-                msg = socket.recv(HEADER).decode(FORMAT)
-            except:
-                print(f"[TIMEOUT] {addr[0]} has timed out from the server")
-                socket.close()
-                break
+    def get_invalid_msg(self):
+        return struct.pack("!16x")
 
-            if (msg == "RPOS" or msg == "OBSF" or msg == "RBID"):
-                print(f"[{addr}] {msg}")
-                self.send_client(socket, msg)
-
-            elif msg == DISCONNECT_MESSAGE:
-
-                print(
-                    f"[DISCONNECTION] {addr} disconnected from the server")
-                socket.close()
-                break
-
-            else:
-                socket.send(
-            "[ERROR] Can't send this message. Try again\n".encode(FORMAT))
+    def position_broadcast(self, event):
+        format = "!3fI"
+        data = struct.pack(format, self.pos[0], self.pos[1], self.pos[2], self.id)
+        self.pos_broadcast_socket.sendto(data, (self.pos_broadcast_host, self.pos_broadcast_port))
 
 
+    def manage_requests(self, client_sock):
+        rqst_format = "cccc"
+
+        while True: 
+            client_rqst = client_sock.recv(4)
             
-    
-    def send_client(self,socket, msg):
-        """Send message back to client
-
-        Args:
-            socket (socket): Has client info
-            msg (string): Message that the client sent to server to get info
-        """
-
-        if msg == "RPOS":
-            msg = pack(">fffx",self.pos[0],self.pos[1],self.pos[2])
-
-        elif msg == "OBSF":
-
-            msg = pack(">ixxx", int(self.obstacle)) # BON nbre de x?
-
-        elif msg == "RBID":
-            msg = pack(">ixxx",self.id)
+            if not client_rqst:
+                return
         
-        socket.send(msg)
-        time.sleep(0.1)
+            try:               
+                rqst_bytes = struct.unpack(rqst_format, client_rqst)
+
+                rqst_str = (rqst_bytes[0].decode('ascii') + 
+                            rqst_bytes[1].decode('ascii') + 
+                            rqst_bytes[2].decode('ascii') + 
+                            rqst_bytes[3].decode('ascii'))
+
+                if rqst_str == "RPOS":
+                    resp_str = self.position_rqst()
+                elif rqst_str == "OBSF":
+                    resp_str = self.obstacle_rqst()
+                elif rqst_str == "RBID":
+                    resp_str = self.id_rqst()
+                else:
+                    raise ValueError
+
+            except struct.error:
+                raise ValueError
+            except ValueError:
+                resp_format = "ixxxxxxxxxxxx"
+                resp_str = struct.pack(resp_format, -1)
+
+            client_sock.send(resp_str)
+
+    def position_rqst(self):
+        resp_format = "fffxxxx"
+        return struct.pack(resp_format, self.pos[0], self.pos[1], self.pos[2])
+
+    def obstacle_rqst(self):
+        resp_format = "Ixxxxxxxxxxxx"
+        return struct.pack(resp_format, self.obstacle)
+
+    def id_rqst(self):
+        resp_format = "Ixxxxxxxxxxxx"
+        return struct.pack(resp_format, self.id)
 
 
+    def update_position(self, msg):
+        position = msg.pose.pose.position
+        yaw = quaternion_to_yaw(msg.pose.pose.orientation)
+        self.pos = (position.x, position.y, yaw)
+
+    def detect_obstacle(self, msg):
+        dist_treshold = 1.00
+
+        for dist in msg.ranges:
+            if dist == "inf":
+                pass
+            elif dist < dist_treshold:
+                self.obstacle = 1
+                return
+
+        self.obstacle = 0
+
+    def broadcast_position(self, event):
+        pos_msg_format = "fffI"
+        pos_msg = struct.pack(pos_msg_format, 
+                       self.pos[0], 
+                       self.pos[1], 
+                       self.pos[2], 
+                       self.id)
+        
+        self.bc_socket.sendto(pos_msg, (self.pos_broadcast_ip, self.pos_broadcast_port))
+
+        #try:
+        #    self.bc_socket.sendto(pos_msg, (self.pos_broadcast_ip, self.pos_broadcast_port))
+        #except Exception as e:
+        #    self.bc_socket.sendto(pos_msg, (self.pos_broadcast_ip, self.pos_broadcast_port))
+
+
+# if __name__== "__main__" :
+#     rospy.init_node("ros_monitor")
+# 
+#     node = ROSMonitor()
+# 
+#     node.rr_thread.setDaemon(1)
+#     node.rr_thread.start()
+#     
+#     rospy.spin()
+    
 if __name__ == "__main__":
+    try:
+        rospy.init_node("ros_monitor")
 
-    rospy.init_node("ros_monitor")
+        node = ROSMonitor()
 
-    node = ROSMonitor()
-
-    rospy.spin()
-    REMOTE_REQUEST_SERVER.close()
+        rospy.spin()
+    except KeyboardInterrupt:
+        node.pos_broadcast_socket.close()
+        node.rr_socket.close()

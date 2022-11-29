@@ -1,49 +1,33 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import socket
-import time
+import struct
 
-from struct import *
-
-HEADER = 128  # 16 octets x 8 = 128 bit message
+HOST = '10.0.1.255'
+# This process should listen to a different port than the RemoteRequest client.
 PORT = 65431
-ADDR = ('', PORT)
+format = "!3fI"
 
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-sock.bind(ADDR)
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+s.bind((HOST, PORT))
 
-def connection():
+try:
+    print("Press Enter to receive a message.\nType 'exit' to close the program.\n")
+    stop = False
+    while not stop:
+        msg = input("")
 
-    """
-    Start the listening for Ros_Monitor broadcast
-    """    
+        if msg == "exit":
+            stop = True
+        else:
+            (x, y, theta, id)  = struct.unpack(format, s.recvfrom(1024)[0])
+            print(f"{HOST}:{PORT}\n")
+            print(f"   x     : {x}\n")
+            print(f"   y     : {y}\n")
+            print(f"   theta : {theta}\n")
+            print(f"   id    : {id}\n")
 
-    print(f" Vehicle tracker started listening on {ADDR[0]}")
+except KeyboardInterrupt:
+    pass
 
-    while True:
-        try:
-            received_msg, addr = sock.recvfrom(HEADER)
-
-            received_msg = unpack(">fffi", received_msg)
-
-            received_msg = list(received_msg)
-
-            received_msg[3] = pack(">i",received_msg[3])
-
-            received_msg[3] = socket.inet_ntoa(received_msg[3])
-
-            received_msg = tuple(received_msg)
-
-            print(received_msg)
-        
-        except:
-            print('[DISCONNECT] Vehicle Tracker has been disconnected')
-            break
-
-
-if __name__ == "__main__":
-
-    connection()
-
-
+s.close()

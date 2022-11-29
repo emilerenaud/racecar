@@ -1,6 +1,3 @@
-@import '~bootstrap-icons/font/bootstrap-icons';
-
-
 body {
   font-size: .875rem;
 }
@@ -92,165 +89,70 @@ body {
   box-shadow: 0 0 0 3px rgba(255, 255, 255, .25);
 }
 
-/* Custom CSS */
 
-.activity-box{
-  width: 150px;
-  align-items: center;
-  justify-content: center;
+/*
+ * Dashboard
+ */
+
+h2 {
+  margin-top: 8px;
 }
-.back-button-box{
-  display: flex;
-  justify-content: end;
+
+.control {
+  width: max-content;
+  margin-top: 1%;
 }
-.back-button{
-  display: flex;
-  justify-content: center;
-  align-items: center;
+
+textarea {
+  background-color: gray;
+  color: #fff;
+  width: 100%;
+  height: 50%;
 }
-button:disabled{
-  opacity:0.5;
-}
-.button-style {
-  background-color: rgb(189, 188, 188);
-  color: black;
-  font-size: larger;
-  width: 70px;
-  height: 50px;
-  border-radius: 10px;
-  transition: opacity 0.15s;
-  border:none;
-}
-.button-style:hover{
-  opacity: 50%;
-}
-.button-style:active{
-  opacity: 10%;
-}
-.deadman-button{
-  background-color: rgb(189, 188, 188);
-  color: black;
-  width: 200px;
-  height: 50px;
-  border-radius: 10px;
-  transition: opacity 0.15s;
-  border:none;
-}
-.deadman-button:hover{
-  opacity: 50%;
-}
-.deadman-button:active{
-  opacity: 10%;
-}
-.deadman-status-off{
-  background-color: red;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  width: 60px;
-  height: 25px;
-  border-radius: 10px;
-  border:none;
-}
-.deadman-status-on{
-  background-color: green;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  width: 60px;
-  height: 25px;
-  border-radius: 10px;
-  border:none;
-}
-.deadman-status-box{
-  display: flex;
-  width: 300px;
-  margin-top: 30px;
-}
-.deadman-activity-box{
-  width: 100px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.forward-button-box{
-  display: flex;
-  justify-content: center;
-  width: 300px;
-  margin-top: 30px;
-}
-.form-box {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction:column;
-  height: 100vh;
-  padding-bottom: 50px;
-}
-.left-backward-right-button-box{
-  margin-top: 30px;
-  width: 300px;
-  display: flex;
-  justify-content: space-between;
-}
-.loader {
-  border: 16px solid #f3f3f3; /* Light grey */
-  border-top: 16px solid #3498db; /* Blue */
-  border-radius: 50%;
-  width: 120px;
-  height: 120px;
-  animation: spin 2s linear infinite;
-}
-.online-style {
-  background-color: green;
-  margin-left: 25px;
-  margin-top: 10px;
-  display: flex;
-  align-items: center;
-  padding-left: 8px;
-  color: white;
-  width: 60px;
-  height: 25px;
-  border-radius: 10px;
-  border:none;
-}
-.offline-style {
-  background-color: red;
-  margin-left: 25px;
-  margin-top: 10px;
-  display: flex;
-  align-items: center;
-  padding-left: 8px;
-  color: white;
-  width: 60px;
-  height: 25px;
-  border-radius: 10px;
-  border:none;
-}
-.status-textbox{
-  background-color: rgb(222, 235, 234);
-  width: 50%;
+
+#joystick {
+  width: auto;
   height: 150px;
-  padding: 5%;
-  resize: both;
-  overflow: auto;
+  overflow: hidden;
+  padding: 0;
+  margin: 0;
 }
-.status-bar{
-  font-weight: bold;
-  width: 125px;
-}
-.status-activity-box{
-  display: flex;
-  flex-direction: row;
-}
-.text-bold{
-  font-weight: bold;
-}
-li {
-  list-style: none;
+
+#button_arreter {
+  background-color: red;
 }
 
 
+/*
+ * Login page
+ */
 
+ #body-connection {
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  background-image: url("../images/flash.jpg");
+}
+
+#div-outerbox {
+  position: absolute;
+  background-color: rgb(207, 203, 203);
+  opacity: 0.90;
+  border-radius: 20px;
+  top: 50%;
+  left: 50%;
+  margin-top: -100px;
+  margin-left: -150px;
+  height: 200px;
+  width: 300px;
+}
+
+#div-connection {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin-top: -75px;
+  margin-left: -100px;
+  height: 100px;
+  width: 200px;
+}

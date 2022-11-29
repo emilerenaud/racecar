@@ -1,0 +1,182 @@
+<!doctype html>
+<html>
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+
+    <title>Dashboard</title>
+</head>
+
+<body onresize="reset_joystick()">
+    <!-- Navbar BEGIN-->
+    <div class="container-fluid">
+        <div class="row bg-dark">
+            <div class="col-auto mr-auto">
+                <h6 class="text-white h4" style="margin-top: 5px;">Dashboard</h6>
+            </div>
+            <div class="col-auto">
+                <button type="button" onclick="disconnect()" style="margin-top: 8px;">Disconnect</button>
+            </div>
+        </div>
+    </div>
+    <!-- Navbar END-->
+
+    <!-- Dashboard BEGIN-->
+    <div class="container-fluid">
+        <!-- Main row / content -->
+        <div class="row">
+
+            <!-- Left column -->
+            <div class="col-sm">
+                <div>
+                    <h2>Status</h2>
+                    <form id="form_disconnect" action="page_connexion.html">
+                        <textarea id="status_box" rows="8" readonly></textarea>
+                        <br>
+                        <button type="button"
+                                onclick="empty_status_box()">Clear</button>
+                    </form>
+                </div>
+
+                <hr>
+
+                <div>
+                    <h2>Control</h2>
+                    <!-- Joystick -->
+                    <div id="joystick"></div>
+                    <hr>
+
+                    <!-- Buttons -->
+                    <div>
+                        <!-- Speed controls -->
+                        <button type="button"
+                                class="control"
+                                id="button_avancer"
+                                onclick="deplacer('Forward!', 1.0)"
+                                disabled>Forward</button>
+                        <button type="button"
+                                class="control"
+                                id="button_arreter"
+                                onclick="arreter()"
+                                disabled>Stop</button>
+                        <button type="button"
+                                class="control"
+                                id="button_reculer"
+                                onclick="deplacer('Backwards!', -1.0)"
+                                disabled>Backward</button>
+                        <br>
+                        <!-- Steering controls -->
+                        <button type="button"
+                                class="control"
+                                id="button_gauche"
+                                onclick="tourner('To the left!', 1.0)"
+                                disabled>Left</button>
+                        <button type="button"
+                                class="control"
+                                id="button_devant"
+                                onclick="tourner('Straight ahead!', 0.0)"
+                                disabled>Center</button>
+                        <button type="button"
+                                class="control"
+                                id="button_droite"
+                                onclick="tourner('To the right!', -1.0)"
+                                disabled>Right</button>
+                    </div>
+                </div>
+
+                <hr>
+
+            </div>
+
+            <!-- Right column -->
+            <div class="col-md-7">
+                <h2>Camera</h2>
+                <img src=""
+                     id="video_frame"
+                     title="Video feed"
+                     alt="Video feed"
+                     width="100%">
+            </div>
+        </div>
+    </div>
+    <!-- Dashboard END-->
+
+    <!-- JavaScript, import frameworks -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="js/jquery-3.3.1.slim.min.js"></script>
+    <script src="js/popper.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/roslib.min.js"></script> <!-- rosbridge -->
+
+    <!-- Custom scripts -->
+    <script src="js/virtualjoystick.js"></script>
+    <script src="js/functions.js"></script>
+
+    <script>
+        // Define some global variables
+        var rbServer = null;
+        var is_connected = true;
+        var cmdVelTopic = null;
+        var consigne_buttons_speed = 0.0;
+        var consigne_buttons_steering = 0.0;
+
+        var params = new URLSearchParams(window.location.search);
+        var username = params.get("username"); //window.sessionStorage.getItem("username");
+        var ip_addr = params.get("ip_addr"); //window.sessionStorage.getItem("ip_addr");
+        var header = "Username : " + username + "\nIP address : " + ip_addr + "\n";
+        empty_status_box();
+
+        //Some initializations after the page has been shown
+        $(document).ready(function(){
+        document.getElementById("log").value = 'Default text\n'
+        });
+
+        if (ip_addr == ""){
+            ip_addr = "null";
+        }
+        connectROS(ip_addr);
+
+        // These lines create a message that conforms to the structure of the Twist defined in our ROS installation
+        // It initalizes all properties to zero. They will be set to appropriate values before we publish this message.
+        var twist = new ROSLIB.Message({
+            linear : {
+                x : 0.0,
+                y : 0.0,
+                z : 0.0
+            },
+            angular : {
+                x : 0.0,
+                y : 0.0,
+                z : 0.0
+            }
+        });
+
+        var joystick_container = document.getElementById("joystick");
+        var joystick = create_joystick(joystick_container);
+        var joystick_radius = 0.4 * joystick_container.clientHeight;
+
+        //Publishing loop cmd_vel at 5 Hz
+        setInterval(function(){
+            let consigne_joy_speed = 0.0;
+            let consigne_joy_steering = 0.0;
+            if(joystick._pressed == true){
+                consigne_joy_speed = -joystick.deltaY() / joystick_radius;
+                consigne_joy_steering = -joystick.deltaX() / joystick_radius;
+            }
+
+            if(cmdVelTopic != null)
+            {
+                twist.linear.x =  consigne_joy_speed + consigne_buttons_speed;
+                twist.angular.z = consigne_joy_steering + consigne_buttons_steering;
+                cmdVelTopic.publish(twist);
+            }
+        }, 200);
+    </script>
+</body>
+</html>

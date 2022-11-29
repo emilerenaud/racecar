@@ -1,0 +1,200 @@
+<!doctype html>
+<html>
+<!-- 
+==References==
+Server-side:
+* http://docs.ros.org/indigo/api/roswww/html/
+* http://wiki.ros.org/web_video_server
+* http://wiki.ros.org/rosbridge_suite/Tutorials/RunningRosbridge
+
+Client-side:
+* http://wiki.ros.org/roslibjs/Tutorials/BasicRosFunctionality
+* https://getbootstrap.com/docs/4.0/getting-started/introduction/
+* https://getbootstrap.com/docs/4.0/layout/grid/
+-->
+
+<head>
+    <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="css/bootstrap.min.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+
+    <title>Laboratoire S5-APP1</title>
+</head>
+
+<body onresize="reset_joystick()">
+    <!-- Menu BEGIN-->
+    <div class="collapse" id="navbarToggleExternalContent">
+        <div class="bg-dark p-4">
+            <h6 class="text-white h4">Configuration</h6>
+            <br>
+            <forms>
+                <label for="input_ip_addr" style="color: white;">ROS Master IP :</label><br>
+                <input type="text" id="input_ip_addr" name="input_ip_addr"><br>
+                <button type="button"
+                        onclick="connectROS(document.getElementById('input_ip_addr').value)">Connecter</button>
+            </forms>
+        </div>
+    </div>
+
+    <nav class="navbar navbar-dark bg-dark">
+        <div>
+            <div class="row">
+                <div class="col">
+                    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarToggleExternalContent">
+                        <span class="navbar-toggler-icon"></span>
+                    </button>
+                </div>
+                
+                <div class="col">
+                    <h6 class="text-white h4" style="vertical-align: middle;">Racecar</h6>
+                </div>
+            </div>
+        </div>
+    </nav>
+    <!-- Menu END-->
+
+    <!-- Main layout BEGIN-->
+    <div class="container-fluid">
+        <!-- Main row / content -->
+        <div class="row">
+
+            <!-- Left column -->
+            <div class="col-5">
+                <div>
+                    <h2>Statut</h2>
+                    <form>
+                        <textarea id="status_box" rows="6" readonly></textarea>
+                        <br>
+                        <button type="button"
+                                onclick="empty_status_box()">Effacer</button>
+                        <button type="button"
+                                onclick="disconnectROS()">Déconnecter</button>
+                    </form>
+                </div>
+
+                <hr>
+
+                <div>
+                    <h2>Contrôle</h2>
+                    <!-- Joystick -->
+                    <div id="joystick"></div>
+                    <hr>
+
+                    <!-- Buttons -->
+                    <div>
+                        <!-- Speed controls -->
+                        <button type="button"
+                                class="control"
+                                id="button_avancer"
+                                onclick="deplacer('En avant!', 1.0)"
+                                disabled>Avancer</button>
+                        <button type="button"
+                                class="control"
+                                id="button_arreter"
+                                onclick="arreter()"
+                                disabled>Arrêter</button>
+                        <button type="button"
+                                class="control"
+                                id="button_reculer"
+                                onclick="deplacer('En arrière!', -1.0)"
+                                disabled>Reculer</button>
+                        <br>
+                        <!-- Steering controls -->
+                        <button type="button"
+                                class="control"
+                                id="button_gauche"
+                                onclick="tourner('À gauche!', 1.0)"
+                                disabled>Gauche</button>
+                        <button type="button"
+                                class="control"
+                                id="button_devant"
+                                onclick="tourner('Tout droit!', 0.0)"
+                                disabled>Devant</button>
+                        <button type="button"
+                                class="control"
+                                id="button_droite"
+                                onclick="tourner('À droite!', -1.0)"
+                                disabled>Droite</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right column -->
+            <div class="col-7">
+                <h2>Caméra</h2>
+                <img src=""
+                     id="video_frame"
+                     title="Video feed"
+                     alt="Video feed"
+                     width="100%">
+            </div>
+        </div>
+    </div>
+    <!-- Main layout END-->
+
+    <!-- JavaScript, import frameworks -->
+    <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+    <script src="js/jquery-3.3.1.slim.min.js"></script>
+    <script src="js/popper.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+    <script src="js/roslib.min.js"></script> <!-- rosbridge -->
+
+    <!-- Custom scripts -->
+    <script src="js/virtualjoystick.js"></script>
+    <script src="js/functions.js"></script>
+
+    <script>
+        // Define some global variables
+        var rbServer = null;
+        var cmdVelTopic = null;
+        var consigne_buttons_speed = 0.0;
+        var consigne_buttons_steering = 0.0;
+
+        //Some initializations after the page has been shown
+        $(document).ready(function(){
+        document.getElementById("log").value = 'Default text\n'
+        });
+
+        // These lines create a message that conforms to the structure of the Twist defined in our ROS installation
+        // It initalizes all properties to zero. They will be set to appropriate values before we publish this message.
+        var twist = new ROSLIB.Message({
+            linear : {
+                x : 0.0,
+                y : 0.0,
+                z : 0.0
+            },
+            angular : {
+                x : 0.0,
+                y : 0.0,
+                z : 0.0
+            }
+        });
+
+        var joystick_container = document.getElementById("joystick");
+        var joystick = create_joystick(joystick_container);
+        var joystick_radius = 0.4 * joystick_container.clientHeight;
+
+        //Publishing loop cmd_vel at 5 Hz
+        setInterval(function(){
+            let consigne_joy_speed = 0.0;
+            let consigne_joy_steering = 0.0;
+            if(joystick._pressed == true){
+                consigne_joy_speed = -joystick.deltaY() / joystick_radius;
+                consigne_joy_steering = -joystick.deltaX() / joystick_radius;
+            }
+
+            if(cmdVelTopic != null)
+            {
+                twist.linear.x =  consigne_joy_speed + consigne_buttons_speed;
+                twist.angular.z = consigne_joy_steering + consigne_buttons_steering;
+                cmdVelTopic.publish(twist);
+            }
+        }, 200);
+
+    </script>
+</body>
+</html>

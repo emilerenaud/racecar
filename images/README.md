@@ -1,7 +1,7 @@
 # Restore RaspberryPi image
 1. Download the following SD-CARD image for RPI3 or RPI4 (created following this [section](https://github.com/SherbyRobotics/racecar/tree/master/images#create-raspberrypi-image) below):
-    * RPI3: [racecar_a21_rpi3_melodic.zip](https://tinyurl.com/RPI3-racecar-image) (3.28GB)
-    * RPI4: [racecar_a21_rpi4_noetic.zip](https://tinyurl.com/RPI4-racecar-image) (3.98GB)
+    * RPI3: [racecar_a21_rpi3_melodic.zip](https://usherbrooke-my.sharepoint.com/:u:/g/personal/labm2414_usherbrooke_ca/ERA4amhZbm1MshTv2ZT2buYBFTL_TK0wzKTO5jHhPGlUkA?e=dOXxwo) (3.28GB)
+    * RPI4: [racecar_a21_rpi4_noetic.zip](https://usherbrooke-my.sharepoint.com/:u:/g/personal/labm2414_usherbrooke_ca/EUaHswHlke5KnEU54Dm_E1YBRABgXDmlh6pOE6w8mp5C6Q?e=uU8lnF) (3.98GB)
 2. Use [Etcher](https://www.balena.io/etcher/) to flash the image on a SD-CARD (min 16GB). 
 3. Boot the RPI with HDMI, a mouse and a keyboard connected. Default username is `racecar` and password is `racecar`. 
 4. (Optional) Resize partition to use the full SD-CARD.
@@ -50,7 +50,7 @@
 
 1. Install [Ubuntu Mate](https://ubuntu-mate.org/download/) with login name `racecar`:
     1. For RPI3, because of some [issues](https://ubuntu-mate.community/t/ubuntu-mate-20-04-1-first-boot-hung-on-rpi-3/23748/3), download Ubuntu 18.04 armhf (32 bits) image from [here](https://releases.ubuntu-mate.org/archived/bionic/armhf/).
-    2. For RPI4, select Ubuntu 20.04 64 bits image for RPI4 ([direct link](https://ubuntu-mate.org/download/arm64/focal/))
+    2. For RPI4, select Ubutu 20.04 64 bits image for RPI4
 3. In Network Manager, edit "Wired connection 1" and rename it to "Wired connection 192.168.10.1":
     1. In IPv4 settings, set connection type to Manual instead of Automatic (DHCP)
     2. Add address `192.168.10.1` with mask `24`, leave Gateaway field empty

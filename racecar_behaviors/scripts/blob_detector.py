@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import rospy
 import cv2
@@ -65,7 +65,7 @@ class BlobDetector:
         self.listener = tf.TransformListener()
         
         self.image_pub = rospy.Publisher('image_detections', Image, queue_size=1)
-        self.object_pub = rospy.Publisher('object_detected', String, queue_size=1)
+        self.object_pub = rospy.Publisher('object_detected', Pose, queue_size=1)
         
         self.image_sub = message_filters.Subscriber('image', Image)
         self.depth_sub = message_filters.Subscriber('depth', Image)
@@ -142,10 +142,7 @@ class BlobDetector:
             self.br.sendTransform(transObj, rotObj,
                     image.header.stamp,
                     self.object_frame_id,
-                    image.header.frame_id)  
-            msg = String()
-            msg.data = self.object_frame_id
-            self.object_pub.publish(msg) # signal that an object has been detected
+                    image.header.frame_id)
             
             # Compute object pose in map frame
             try:
@@ -168,10 +165,17 @@ class BlobDetector:
             distance = np.linalg.norm(transBase[0:2])
             angle = np.arcsin(transBase[1]/transBase[0])
             
-            rospy.loginfo("Object detected at [%f,%f] in %s frame! Distance and direction from robot: %fm %fdeg.", transMap[0], transMap[1], self.map_frame_id, distance, angle*180.0/np.pi)
+            msg = Pose()
+            msg.position.x = transMap[0]
+            msg.position.y = transMap[1]
+            msg.position.z = distance
+            msg.orientation.z = angle
+            self.object_pub.publish(msg)
+            # rospy.loginfo("Object detected at [%f,%f] in %s frame! Distance and direction from robot: %fm %fdeg.", transMap[0], transMap[1], self.map_frame_id, distance, angle*180.0/np.pi)
 
         # debugging topic
-        if self.image_pub.get_num_connections()>0:
+
+        if self.image_pub.get_num_connections()>=0:
             cv_image = cv2.bitwise_and(cv_image, cv_image, mask=mask)
             try:
                 self.image_pub.publish(self.bridge.cv2_to_imgmsg(cv_image, "bgr8"))
@@ -188,4 +192,3 @@ if __name__ == '__main__':
         main()
     except rospy.ROSInterruptException:
         pass
-

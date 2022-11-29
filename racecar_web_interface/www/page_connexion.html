@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <link rel="stylesheet" href="css/dashboard.css"/>
+        <title>Connection page</title>
+    </head>
+
+    <body id="body-connection">
+        <div id="div-outerbox"></div>
+
+        <div id="div-connection">
+            <form id="form_credentials" action="dashboard.html" method="get">
+                <label for="username" style="color: black;">Username :</label><br>
+                <input type="text" name="username" id="username" required><br><br>
+                <label for="ip_addr" style="color: black;">IP address :</label><br>
+                <input type="text"
+                       name="ip_addr"
+                       id="ip_addr"
+                       pattern="((^|\.)((25[0-5])|(2[0-4]\d)|(1\d\d)|([1-9]?\d))){4}$"
+                       required><br><br>
+                <button type="button"
+                        id="button_connect"
+                        onclick="connect()"
+                        disabled>Connect</button>
+            </form>
+
+            <p id="error_msg" style="color: red;"></p>
+        </div>
+
+        <!-- JavaScript, import frameworks -->
+        <!-- jQuery first, then Popper.js, then Bootstrap JS -->
+        <script src="js/jquery-3.3.1.slim.min.js"></script>
+        <script src="js/popper.min.js"></script>
+        <script src="js/bootstrap.min.js"></script>
+        <script src="js/roslib.min.js"></script> <!-- rosbridge -->
+
+        <script src="js/functions.js"></script>
+        <script>
+            var rb_test = null;
+
+            setInterval(function() {
+            document.getElementById("button_connect").disabled = document.getElementById("username").value == "" ||
+                                                                 document.getElementById("ip_addr").value == "";
+            }, 50);
+        </script>
+    </body>
+
+</html>

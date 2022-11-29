@@ -13,13 +13,14 @@
          
          cmd_vel_abtr_0 is reserved for teleop (highest priority).
   -->
+  <include file="$(find racecar_behaviors)/launch/blob_detection.launch"/>
 
   <arg name="prefix" default="racecar"/>
   
   <group ns="$(arg prefix)">
       
     <node pkg="racecar_behaviors" type="path_following.py" name="path_following" output="screen">
-       <param name="max_speed" value="1"/>
+       <param name="max_speed" value="0.5"/>
        <remap from="cmd_vel" to="cmd_vel_abtr_2"/>
        <remap from="scan"    to="scan"/>
        <remap from="odom"    to="odometry/filtered"/>

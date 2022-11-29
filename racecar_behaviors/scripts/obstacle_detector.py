@@ -1,10 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
-import rospy
-import math 
+import math
 import numpy as np
+import rospy
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import LaserScan
+
 
 class ObstacleDetector:
     def __init__(self):
@@ -13,10 +14,9 @@ class ObstacleDetector:
         self.scan_sub = rospy.Subscriber('scan', LaserScan, self.scan_callback, queue_size=1)
 
     def scan_callback(self, msg):
-    
-        # Because the lidar is oriented backward on the racecar, 
-        # if we want the middle value of the ranges to be forward:
         l2 = int(len(msg.ranges)/2);
+
+        # If we want the middle value of the ranges to be forward in the simulation:
         ranges = msg.ranges[l2:len(msg.ranges)] + msg.ranges[0:l2]
         
         # Obstacle front?
