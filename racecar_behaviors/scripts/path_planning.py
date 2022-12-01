@@ -25,7 +25,7 @@ show_animation = True
 
 class AStarPlanner:
 
-    def __init__(self, ox, oy, resolution, rr):
+    def __init__(self, ox, oy, resolution, rr, brushfire_map):
         """
         Initialize grid map for a star planning
 
@@ -43,6 +43,7 @@ class AStarPlanner:
         self.x_width, self.y_width = 0, 0
         self.motion = self.get_motion_model()
         self.calc_obstacle_map(ox, oy)
+        self.brushfire_map = brushfire_map
 
     class Node:
         def __init__(self, x, y, cost, parent_index):
@@ -74,9 +75,9 @@ class AStarPlanner:
         # self.max_x = 22
         # self.max_y = 7
         start_node = self.Node(self.calc_xy_index(sx, self.min_x),
-                               self.calc_xy_index(sy, self.min_y), 0.0, -1)
+                               self.calc_xy_index(sy, self.min_y), 1, -1)
         goal_node = self.Node(self.calc_xy_index(gx, self.min_x),
-                              self.calc_xy_index(gy, self.min_y), 0.0, -1)
+                              self.calc_xy_index(gy, self.min_y), 1, -1)
 
         open_set, closed_set = dict(), dict()
         open_set[self.calc_grid_index(start_node)] = start_node
@@ -90,7 +91,7 @@ class AStarPlanner:
                 open_set,
                 key=lambda o: open_set[o].cost + self.calc_heuristic(goal_node,
                                                                      open_set[
-                                                                         o]))
+                                                                         o])+ self.brushfire_map[int(open_set[o].x)][int(open_set[o].y)])
             current = open_set[c_id]
 
             # show graph
@@ -307,15 +308,15 @@ def main():
     grid = np.reshape(response.map.data, [response.map.info.height, response.map.info.width])
     
     # np.flip(grid.T)
-    # grid[grid == -1] = 89
-    # grid[grid == 0] = 178
-    # grid[grid == 100] = 0
+    grid[grid == -1] = 89
+    grid[grid == 0] = 178
+    grid[grid == 100] = 0
 
     nRows, nCols = grid.shape
 
     ox, oy = [], []
-    # obstacles = np.where(grid==0) # 1200
-    obstacles = np.where(brushfireMap<50) #68199
+    obstacles = np.where(grid==0) # 1200
+    # obstacles = np.where(brushfireMap<50) #68199
 
     rospy.loginfo(obstacles[0].size)
 
@@ -342,12 +343,12 @@ def main():
         plt.axis("equal")
 
     # a_star = AStarPlanner(ox, oy, response.map.info.resolution, robot_radius)
-    a_star = AStarPlanner(ox, oy, 0.5, robot_radius)
+    a_star = AStarPlanner(ox, oy, 0.1, robot_radius,brushfireMap)
     rx, ry = a_star.planning(sx, sy, gx, gy)
 
     if show_animation:  # pragma: no cover
         plt.plot(rx, ry, "-r")
-        plt.pause(0.0001)
+        # plt.pause(0.0001)
         plt.show()
 
 

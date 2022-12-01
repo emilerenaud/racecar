@@ -9,6 +9,7 @@ import tf2_ros
 from racecar_behaviors.cfg import BlobDetectorConfig
 from dynamic_reconfigure.server import Server
 from std_msgs.msg import String, ColorRGBA
+from std_msgs.msg import Float32MultiArray
 from sensor_msgs.msg import Image, CameraInfo
 from geometry_msgs.msg import Pose, Quaternion
 from cv_bridge import CvBridge, CvBridgeError
@@ -21,7 +22,7 @@ class BlobDetector:
         self.map_frame_id = rospy.get_param('~map_frame_id', 'map')
         self.frame_id = rospy.get_param('~frame_id', 'base_link')
         self.object_frame_id = rospy.get_param('~object_frame_id', 'object')
-        self.color_hue = rospy.get_param('~color_hue', 10) # 160=purple, 100=blue, 10=Orange
+        self.color_hue = rospy.get_param('~color_hue', 110) # 160=purple, 100=blue, 10=Orange
         self.color_range = rospy.get_param('~color_range', 15) 
         self.color_saturation = rospy.get_param('~color_saturation', 50) 
         self.color_value = rospy.get_param('~color_value', 50) 
@@ -66,6 +67,8 @@ class BlobDetector:
         
         self.image_pub = rospy.Publisher('image_detections', Image, queue_size=1)
         self.object_pub = rospy.Publisher('object_detected', String, queue_size=1)
+        self.balloon_pub = rospy.Publisher('position_balloon', Float32MultiArray, queue_size=10)
+        self.balloon_found = 0
         
         self.image_sub = message_filters.Subscriber('image', Image)
         self.depth_sub = message_filters.Subscriber('depth', Image)
@@ -75,7 +78,8 @@ class BlobDetector:
         
     def config_callback(self, config, level):
         rospy.loginfo("""Reconfigure Request: {color_hue}, {color_saturation}, {color_value}, {color_range}, {border}""".format(**config))
-        self.color_hue = config.color_hue
+        # self.color_hue = config.color_hue
+        self.color_hue = 110
         self.color_range = config.color_range
         self.color_saturation = config.color_saturation
         self.color_value = config.color_value
@@ -135,6 +139,7 @@ class BlobDetector:
                         closestObject[2] = depth
 
         # We process only the closest object detected
+        self.balloon_found = 0
         if closestObject[2] > 0:
             # assuming the object is circular, use center of the object as position
             transObj = (closestObject[0], closestObject[1], closestObject[2])
@@ -145,6 +150,7 @@ class BlobDetector:
                     image.header.frame_id)  
             msg = String()
             msg.data = self.object_frame_id
+            # msg.data = self.
             self.object_pub.publish(msg) # signal that an object has been detected
             
             # Compute object pose in map frame
@@ -169,7 +175,10 @@ class BlobDetector:
             angle = np.arcsin(transBase[1]/transBase[0])
             
             rospy.loginfo("Object detected at [%f,%f] in %s frame! Distance and direction from robot: %fm %fdeg.", transMap[0], transMap[1], self.map_frame_id, distance, angle*180.0/np.pi)
-
+            msg = Float32MultiArray()
+            msg.data = [transMap[0],transMap[1],distance,angle*180.0/np.pi]
+            self.balloon_pub.publish(msg)
+            # self.ballon_pub.publish("Object detected at [%f,%f] in %s frame! Distance and direction from robot: %fm %fdeg.", transMap[0], transMap[1], self.map_frame_id, distance, angle*180.0/np.pi)
         # debugging topic
         if self.image_pub.get_num_connections()>0:
             cv_image = cv2.bitwise_and(cv_image, cv_image, mask=mask)
