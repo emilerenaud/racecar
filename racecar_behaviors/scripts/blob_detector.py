@@ -79,7 +79,7 @@ class BlobDetector:
     def config_callback(self, config, level):
         rospy.loginfo("""Reconfigure Request: {color_hue}, {color_saturation}, {color_value}, {color_range}, {border}""".format(**config))
         # self.color_hue = config.color_hue
-        self.color_hue = 110
+        self.color_hue = 120
         self.color_range = config.color_range
         self.color_saturation = config.color_saturation
         self.color_value = config.color_value
@@ -102,7 +102,15 @@ class BlobDetector:
         
         mask = cv2.inRange(hsv, np.array([self.color_hue-self.color_range,self.color_saturation,self.color_value]), np.array([self.color_hue+self.color_range,255,255]))
         keypoints = self.detector.detect(mask) 
+        moments= cv2.moments(mask)
         
+        # calculate x,y coordinate of center
+        cX = 0
+        cY = 0
+        if( moments["m10"] != 0.0 and moments["m00"] != 0.0 and moments["m01"] != 0.0):
+            cX = (moments["m10"] / moments["m00"])-(mask.shape[1]/2)
+            cY = (moments["m01"] / moments["m00"])
+      
         closestObject = [0,0,0] # Object pose (x,y,z) in camera frame (x->right, y->down, z->forward)
         if len(keypoints) > 0:
             cv_image = cv2.drawKeypoints(cv_image, keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
@@ -174,11 +182,10 @@ class BlobDetector:
             distance = np.linalg.norm(transBase[0:2])
             angle = np.arcsin(transBase[1]/transBase[0])
             
-            rospy.loginfo("Object detected at [%f,%f] in %s frame! Distance and direction from robot: %fm %fdeg.", transMap[0], transMap[1], self.map_frame_id, distance, angle*180.0/np.pi)
+            rospy.loginfo("Object detected at [%f,%f] in %s frame! Distance and direction from robot: %fm %fdeg. Center X:%f Y:%f", transMap[0], transMap[1], self.map_frame_id, distance, angle*180.0/np.pi,cX,cY)
             msg = Float32MultiArray()
-            msg.data = [transMap[0],transMap[1],distance,angle*180.0/np.pi]
+            msg.data = [transMap[0],transMap[1],distance,angle*180.0/np.pi,cX,cY]
             self.balloon_pub.publish(msg)
-            # self.ballon_pub.publish("Object detected at [%f,%f] in %s frame! Distance and direction from robot: %fm %fdeg.", transMap[0], transMap[1], self.map_frame_id, distance, angle*180.0/np.pi)
         # debugging topic
         if self.image_pub.get_num_connections()>0:
             cv_image = cv2.bitwise_and(cv_image, cv_image, mask=mask)

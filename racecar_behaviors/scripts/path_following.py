@@ -8,29 +8,61 @@ from cv_bridge import CvBridge, CvBridgeError
 import sys
 import os
 import time
+import actionlib
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import LaserScan, Image
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Float32MultiArray
+from geometry_msgs.msg import Pose
+from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
+from libbehaviors import *
+from tf.transformations import quaternion_from_euler
 
 class PathFollowing:
     def __init__(self):
         self.max_speed = rospy.get_param('~max_speed', 1)
         self.max_steering = rospy.get_param('~max_steering', 0.37)
+
         self.cmd_vel_pub = rospy.Publisher('cmd_vel', Twist, queue_size=1)
+        self.current_angle = 0
+
         self.scan_sub = rospy.Subscriber('scan', LaserScan, self.scan_callback, queue_size=1)
         self.odom_sub = rospy.Subscriber('odom', Odometry, self.odom_callback, queue_size=1)
+        self.balloon_pub = rospy.Subscriber('position_balloon',Float32MultiArray, self.balloon_callback, queue_size=10)
 
         # Camera shit
-        self.balloon_pub = rospy.Subscriber('position_balloon',Float32MultiArray, self.balloon_callback, queue_size=10)
         self.balloon_list = list()
-        # self.balloon_list.append((0,0))
         self.bridge = CvBridge()    
-        self.balloon_path = r'/home/emile/racecar_balloon/'
-        print(os.getcwd())
+        self.balloon_path = r'/home/jackson/racecar/debris'
 
+        # Goals
+        self.goal_start = self.create_goal(0, 0, np.pi, "pos") # WHY np.pi?
+        self.goal_end = self.create_goal(13.5, 2.1, 0, "pos")
+        self.goal_end_r = self.create_goal(13.5, 2.1, np.pi, "pos")
+        self.goals = [self.goal_end, self.goal_end_r, self.goal_start]
 
-        time.sleep(1)    
+        # Action clients
+        self.mb_client = actionlib.SimpleActionClient("move_base", MoveBaseAction)
+        time.sleep(1)
+        self.mb_client.wait_for_server()
+        self.send_goal()
+
+    def send_goal(self):
+        if len(self.goals) > 0:
+            self.mb_client.send_goal(self.goals[0][0], self.goal_reached_callback)
+
+    def goal_reached_callback(self, goal_status, result):
+        goal_x = self.goals[0][0].target_pose.pose.position.x
+        goal_y = self.goals[0][0].target_pose.pose.position.y
+        goal_angle = quaternion_to_yaw(self.goals[0][0].target_pose.pose.orientation)
+        rospy.loginfo("Goal reached!\nX : {0}\nY : {1}\nAngle : {2}\n".format(goal_x, goal_y, goal_angle))
+
+        if (self.goals[0][1] == "blob"):
+            self.take_picture()
+
+            
+        self.goals.pop(0)
+        self.send_goal()
 
     def scan_callback(self, msg):
         # Because the lidar is oriented backward on the racecar, 
@@ -46,6 +78,7 @@ class PathFollowing:
         
     def odom_callback(self, msg):
         # rospy.loginfo("Current speed = %f m/s", msg.twist.twist.linear.x)
+        self.current_angle = quaternion_to_yaw(msg.pose.pose.orientation)
         pass
 
     def balloon_callback(self,msg):
@@ -56,40 +89,35 @@ class PathFollowing:
         distance = msg.data[2]
         angle = msg.data[3]
         tolerance = 1
-        new_balloon = 1
+        new_balloon = True
 
         # Verifier si on a deja enregristrer cette position
         if(len(self.balloon_list) == 0):
             self.balloon_list.append((pos_x,pos_y))
             rospy.loginfo("FIRST BALloON")
-            self.take_picture()
         else:
             
             for balloon in self.balloon_list:
                 if (math.hypot((abs(pos_x - balloon[0])),(abs(pos_y - balloon[1]))) <= tolerance):
                     new_balloon = 0
                     break
-            if new_balloon == 1:
-                rospy.loginfo("New ball")
-                self.balloon_list.append((pos_x,pos_y))
-                self.take_picture()
-            
 
-            # test = filter(math.hypot((abs(pos_x - balloon[0])),(abs(pos_y - balloon[1]))) > tolerance,self.balloon_list)
-            # print(test)
-            # for balloon in self.balloon_list:
-            #     # rospy.loginfo("FOR")
-            #     # rospy.loginfo("X : %f + Y : %f",abs(pos_x - balloon[0]),abs(pos_y - balloon[1]))
-            #     if (math.hypot((abs(pos_x - balloon[0])),(abs(pos_y - balloon[1]))) > tolerance):
-            #         new_balloon = 1
-            #         # rospy.loginfo("New ball")
-            #         # # self.balloon_list.append(zip(msg.data[0],msg.data[1]))
-            #         # self.balloon_list.append((pos_x,pos_y))
-            #         # self.take_picture(pos_x,pos_y)
-            #         # rospy.loginfo("data Zip : %f",zip(msg.data[0],msg.data[1]))
-            #         break
-            
+        if new_balloon:
+            rospy.loginfo("New ball")
+            self.balloon_list.append((pos_x,pos_y))
 
+            angle = msg.orientation.z
+            distance = 1.5 # From the blob to take the picture
+            goal_x = pos_x - distance * np.cos(self.current_angle + angle)
+            goal_y = pos_y - distance * np.sin(self.current_angle + angle)
+            goal = self.create_goal(goal_x, goal_y, self.current_angle + angle, "balloon")
+
+            self.goals.insert(0, goal)
+            self.send_goal()
+
+
+            self.take_picture()
+           
             
             # Se rendre au debris si nouveau debris
 
@@ -107,13 +135,23 @@ class PathFollowing:
             print("error")
             rospy.loginfo("Error")
         else:
-            # Save your OpenCV2 image as a jpeg 
+            # Save your OpenCV2 image as a png
             os.chdir(self.balloon_path)
             filename = "photo_balloon" + str(len(self.balloon_list)) + ".png"
             cv2.imwrite(filename, cv2_img)
-            # cv2.imwrite('camera_image.jpeg', cv2_img)
         rospy.loginfo("File saved")
 
+    def create_goal(self, x, y, angle, type):
+        goal = MoveBaseGoal()
+        goal.target_pose.header.frame_id = "racecar/map"
+        goal.target_pose.pose.position.x = x
+        goal.target_pose.pose.position.y = y
+        (quat_x, quat_y, quat_z, quat_w) = quaternion_from_euler(0,0,angle)
+        goal.target_pose.pose.orientation.x = quat_x
+        goal.target_pose.pose.orientation.y = quat_y
+        goal.target_pose.pose.orientation.z = quat_z
+        goal.target_pose.pose.orientation.w = quat_w
+        return (goal, type)
         
 
 def main():

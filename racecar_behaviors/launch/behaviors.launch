@@ -20,13 +20,13 @@
       
     <node pkg="racecar_behaviors" type="path_following.py" name="path_following" output="screen">
        <param name="max_speed" value="0.5"/>
-       <remap from="cmd_vel" to="cmd_vel_abtr_2"/>
+       <remap from="cmd_vel" to="cmd_vel_abtr_1"/>
        <remap from="scan"    to="scan"/>
        <remap from="odom"    to="odometry/filtered"/>
     </node>  
     
     <node pkg="racecar_behaviors" type="obstacle_detector.py" name="obstacle_detector" output="screen">
-       <remap from="cmd_vel" to="cmd_vel_abtr_1"/>
+       <remap from="cmd_vel" to="cmd_vel_abtr_0"/>
        <remap from="scan"    to="scan"/>
     </node>    
             

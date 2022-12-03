@@ -20,7 +20,7 @@
     </node>
 
     <node pkg="racecar_teleop" type="slash_teleop.py" name="teleop">
-      <remap from="ctl_ref" to="cmd_vel_abtr_0"/> <!-- Highest priority -->
+      <remap from="ctl_ref" to="cmd_vel_abtr_2"/> <!-- Highest priority -->
     </node>
     
     <!-- Arbitration node -->
