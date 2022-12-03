@@ -4,7 +4,7 @@ import rospy
 import cv2
 import tf
 import numpy as np
-from tf.transformations import euler_from_quaternion
+from tf.transformations import euler_from_quaternion, quaternion_from_euler
 
 def quaternion_to_yaw(quat):
     # Uses TF transforms to convert a quaternion to a rotation angle around Z.
@@ -12,6 +12,9 @@ def quaternion_to_yaw(quat):
     #   yaw = quaternion_to_yaw(msg.pose.pose.orientation)
     (roll, pitch, yaw) = euler_from_quaternion([quat.x, quat.y, quat.z, quat.w])
     return yaw
+
+def yaw_to_quaternion(yaw):
+  return quaternion_from_euler(0, 0, yaw)
     
 def multiply_transforms(trans1, rot1, trans2, rot2):
     trans1_mat = tf.transformations.translation_matrix(trans1)
