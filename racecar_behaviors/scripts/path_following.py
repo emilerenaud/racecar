@@ -3,12 +3,12 @@
 import rospy
 import math 
 import actionlib
-import time
 import numpy as np
 from geometry_msgs.msg import Twist
 from nav_msgs.msg import Odometry
 from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from libbehaviors import *
+from path_planning import path_to_debris
 
 class PathFollowing:
     def __init__(self):
@@ -22,9 +22,11 @@ class PathFollowing:
         self.goal_end = self.set_goal(13.5, 2.1, 0)
         self.goal_return = self.set_goal(13.5, 2.1, np.pi)
         self.goals = [self.goal_end, self.goal_return, self.goal_init]
-        #time.sleep(1)
         self.client.wait_for_server()
         self.sending_goal()
+
+        self.balloon_list = list()
+        self.balloon_path = '/home/racecar/debris/'
 
     def set_goal(self, x, y, angle):
         (quat_x, quat_y, quat_z, quat_w) = yaw_to_quaternion(angle)
@@ -48,6 +50,22 @@ class PathFollowing:
         
     def odom_callback(self, msg):
         rospy.loginfo("Current speed = %f m/s", msg.twist.twist.linear.x)
+
+    
+    def export_report(self):
+        report_path = self.folder_path + "report.txt"
+        trajectory_paths = []
+        with open(report_path, "w") as file:
+            i = 0
+            for debris in self.debris_list:
+                trajectory_paths.append(self.folder_path + "trajectory_debris_{0}.png".format(i + 1))
+                file.write("Debris {0} :\n   X : {1:.2f}\n   Y : {2:.2f}\n   Picture path : {3}\n   Trajectory path : {4}\n\n".format(i + 1, debris[0], debris[1], self.img_paths[i], trajectory_paths[i]))
+                i += 1
+            rospy.loginfo("Report exported at {0}".format(report_path))
+
+        # Done in another loop to improve the time to generate the report
+        for i in range(0, len(self.debris_list)):
+            path_to_debris(0, 0, self.debris_list[i][0], self.debris_list[i][1], trajectory_paths[i])
 
 def main():
     rospy.init_node('path_following')
