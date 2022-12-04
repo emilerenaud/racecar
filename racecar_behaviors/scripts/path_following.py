@@ -18,12 +18,12 @@ class PathFollowing:
         self.odom_sub = rospy.Subscriber('odom', Odometry, self.odom_callback, queue_size=1)
 
         self.client = actionlib.SimpleActionClient('move_base',MoveBaseAction)
-        time.sleep(1)
-        self.client.wait_for_server()
         self.goal_init =self.set_goal(0, 0, np.pi)
         self.goal_end = self.set_goal(13.5, 2.1, 0)
         self.goal_return = self.set_goal(13.5, 2.1, np.pi)
         self.goals = [self.goal_end, self.goal_return, self.goal_init]
+        #time.sleep(1)
+        self.client.wait_for_server()
         self.sending_goal()
 
     def set_goal(self, x, y, angle):
