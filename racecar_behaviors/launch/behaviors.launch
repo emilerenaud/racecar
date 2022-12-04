@@ -19,7 +19,7 @@
   <group ns="$(arg prefix)">
       
     <node pkg="racecar_behaviors" type="path_following.py" name="path_following" output="screen">
-       <param name="max_speed" value="0.5"/>
+       <param name="max_speed" value="0.75"/>
        <remap from="cmd_vel" to="cmd_vel_abtr_2"/>
        <remap from="scan"    to="scan"/>
        <remap from="odom"    to="odometry/filtered"/>
