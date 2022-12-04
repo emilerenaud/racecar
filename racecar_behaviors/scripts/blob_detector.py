@@ -182,9 +182,9 @@ class BlobDetector:
             distance = np.linalg.norm(transBase[0:2])
             angle = np.arcsin(transBase[1]/transBase[0])
             
-            rospy.loginfo("Object detected at [%f,%f] in %s frame! Distance and direction from robot: %fm %fdeg. Center X:%f", transMap[0], transMap[1], self.map_frame_id, distance, angle*180.0/np.pi,x)
+            rospy.loginfo("Object detected at [%f,%f] in %s frame! Distance and direction from robot: %fm %fdeg.", transMap[0], transMap[1], self.map_frame_id, distance, angle*180.0/np.pi)
             msg = Float32MultiArray()
-            msg.data = [transMap[0],transMap[1],distance,angle*180.0/np.pi,x]
+            msg.data = [transMap[0],transMap[1],distance,angle*180.0/np.pi]
             self.balloon_pub.publish(msg)
         # debugging topic
         if self.image_pub.get_num_connections()>0:

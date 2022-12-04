@@ -51,7 +51,7 @@ class PathFollowing:
         if len(self.goals) > 0:
             self.mb_client.send_goal(self.goals[0][0], self.goal_reached_callback)
 
-    def goal_reached_callback(self, goal_status, result):
+    def goal_reached_callback(self):
         goal_x = self.goals[0][0].target_pose.pose.position.x
         goal_y = self.goals[0][0].target_pose.pose.position.y
         goal_angle = quaternion_to_yaw(self.goals[0][0].target_pose.pose.orientation)
@@ -59,7 +59,7 @@ class PathFollowing:
 
         if (self.goals[0][1] == "balloon"):
 
-            self.create_goal(goal_x, goal_y, goal_angle + math.tan(self.balloon_sub.data[3]/self.balloon_sub.data[4]), "picture")
+            self.create_goal(goal_x, goal_y, goal_angle + self.balloon_sub.data[3], "picture")
 
         elif( self.goals[0][1] == "picture" ):
             self.take_picture()
