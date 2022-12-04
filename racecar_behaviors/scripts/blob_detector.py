@@ -108,7 +108,7 @@ class BlobDetector:
         cX = 0
         cY = 0
         if( moments["m10"] != 0.0 and moments["m00"] != 0.0 and moments["m01"] != 0.0):
-            cX = (moments["m10"] / moments["m00"])-(mask.shape[1]/2)
+            cX = ((moments["m10"] / moments["m00"])-(mask.shape[1]/2))*0.0002645833
             cY = (moments["m01"] / moments["m00"])
       
         closestObject = [0,0,0] # Object pose (x,y,z) in camera frame (x->right, y->down, z->forward)
@@ -182,9 +182,9 @@ class BlobDetector:
             distance = np.linalg.norm(transBase[0:2])
             angle = np.arcsin(transBase[1]/transBase[0])
             
-            rospy.loginfo("Object detected at [%f,%f] in %s frame! Distance and direction from robot: %fm %fdeg. Center X:%f Y:%f", transMap[0], transMap[1], self.map_frame_id, distance, angle*180.0/np.pi,cX,cY)
+            rospy.loginfo("Object detected at [%f,%f] in %s frame! Distance and direction from robot: %fm %fdeg. Center X:%f", transMap[0], transMap[1], self.map_frame_id, distance, angle*180.0/np.pi,x)
             msg = Float32MultiArray()
-            msg.data = [transMap[0],transMap[1],distance,angle*180.0/np.pi,cX,cY]
+            msg.data = [transMap[0],transMap[1],distance,angle*180.0/np.pi,x]
             self.balloon_pub.publish(msg)
         # debugging topic
         if self.image_pub.get_num_connections()>0:

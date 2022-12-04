@@ -28,7 +28,7 @@ class PathFollowing:
 
         self.scan_sub = rospy.Subscriber('scan', LaserScan, self.scan_callback, queue_size=1)
         self.odom_sub = rospy.Subscriber('odom', Odometry, self.odom_callback, queue_size=1)
-        self.balloon_pub = rospy.Subscriber('position_balloon',Float32MultiArray, self.balloon_callback, queue_size=10)
+        self.balloon_sub = rospy.Subscriber('position_balloon',Float32MultiArray, self.balloon_callback, queue_size=10)
 
         # Camera shit
         self.balloon_list = list()
@@ -55,11 +55,14 @@ class PathFollowing:
         goal_x = self.goals[0][0].target_pose.pose.position.x
         goal_y = self.goals[0][0].target_pose.pose.position.y
         goal_angle = quaternion_to_yaw(self.goals[0][0].target_pose.pose.orientation)
-        rospy.loginfo("Goal reached!\nX : {0}\nY : {1}\nAngle : {2}\n".format(goal_x, goal_y, goal_angle))
+        # rospy.loginfo("Goal reached!\nX : {0}\nY : {1}\nAngle : {2}\n".format(goal_x, goal_y, goal_angle))
 
-        if (self.goals[0][1] == "blob"):
+        if (self.goals[0][1] == "balloon"):
+
+            self.create_goal(goal_x, goal_y, goal_angle + math.tan(self.balloon_sub.data[3]/self.balloon_sub.data[4]), "picture")
+
+        elif( self.goals[0][1] == "picture" ):
             self.take_picture()
-
             
         self.goals.pop(0)
         self.send_goal()
