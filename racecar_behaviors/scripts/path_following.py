@@ -53,19 +53,19 @@ class PathFollowing:
 
     
     def export_report(self):
-        report_path = self.folder_path + "report.txt"
+        report_path = self.balloon_path + "report.txt"
         trajectory_paths = []
         with open(report_path, "w") as file:
             i = 0
-            for debris in self.debris_list:
-                trajectory_paths.append(self.folder_path + "trajectory_debris_{0}.png".format(i + 1))
+            for debris in self.balloon_list:
+                trajectory_paths.append(self.balloon_path + "trajectory_debris_{0}.png".format(i + 1))
                 file.write("Debris {0} :\n   X : {1:.2f}\n   Y : {2:.2f}\n   Picture path : {3}\n   Trajectory path : {4}\n\n".format(i + 1, debris[0], debris[1], self.img_paths[i], trajectory_paths[i]))
                 i += 1
             rospy.loginfo("Report exported at {0}".format(report_path))
 
         # Done in another loop to improve the time to generate the report
-        for i in range(0, len(self.debris_list)):
-            path_to_debris(0, 0, self.debris_list[i][0], self.debris_list[i][1], trajectory_paths[i])
+        for i in range(0, len(self.balloon_list)):
+            path_to_debris(0, 0, self.balloon_list[i][0], self.balloon_list[i][1], trajectory_paths[i])
 
 def main():
     rospy.init_node('path_following')
