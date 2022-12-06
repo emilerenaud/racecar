@@ -53,6 +53,7 @@ class PathFollowing:
 
     
     def export_report(self):
+
         report_path = self.balloon_path + "report.txt"
         trajectory_paths = []
         with open(report_path, "w") as file:
@@ -65,7 +66,9 @@ class PathFollowing:
 
         # Done in another loop to improve the time to generate the report
         for i in range(0, len(self.balloon_list)):
-            path_to_debris(0, 0, self.balloon_list[i][0], self.balloon_list[i][1], trajectory_paths[i])
+            path_to_debris(self.goal_init, self.balloon_list[i], trajectory_paths[i])
+
+
 
 def main():
     rospy.init_node('path_following')
