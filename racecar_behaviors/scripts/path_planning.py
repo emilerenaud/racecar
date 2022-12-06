@@ -1,252 +1,202 @@
-"""
 
-A* grid planning
-
-author: Atsushi Sakai(@Atsushi_twi)
-        Nikos Kanargias (nkana@tee.gr)
-
-See Wikipedia article (https://en.wikipedia.org/wiki/A*_search_algorithm)
-
-"""
+import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
+from random import random
 
 import math
-
+from PIL import Image
 import matplotlib.pyplot as plt
-import rospy
-import cv2
 import numpy as np
+import time
+from libbehaviors import brushfire
+import rospy
 from nav_msgs.srv import GetMap
-from libbehaviors import *
+from collections import deque
+import numpy as np
+import matplotlib.pyplot as plt
+import cv2
 
-show_animation = True
+
+def astar(start, goal, c_fun, n_fun, h_fun,brushfireMap):
+    # Cherche le chemin le plus court entre start et goal à l'aide de l'algorithme A*.
+    # Retourne un tuple de la séquence et du coût : (seq, cost)
+    # Utilise les fonctions :
+    #   c_fun(edge): retourne le coût de parcours du lien edge
+    #   n_fun(node): retourne les voisins du noeud node
+    #   h_fun(node_a, node_b): retourne la valeur de l'heuristique du coût de parcours entre node_a et node_b
+    
+    from math import inf # Valeur infinie
+    
+    search_set = [start] # Ensemble de recherche, ne contient que le noeud de départ pour l'instant.
+    
+    # Dictionnaire contenant le plus bas coût réel du chemin (G) jusqu'au noeud spécifié.
+    g = {}
+    # On initialise avec g = 0 pour le départ
+    g[start] = 0
+    
+    # Dictionnaire contenant la plus basse valeur de la fonction f(node) pour chaque noeud.
+    f = {} 
+    # On initialise f(start) avec g (qui est 0) et l'heuristique jusqu'à la fin.
+    f[start] = g[start] + h_fun(start, goal)
+   
+    # Dictionnaire qui conserve pour chaque noeud la provenance permettant la valeur f la plus faible.
+    # Utilisé pour reconstruire le chemin lorsque l'objectif est atteint.
+    from_node = {}
+    # On initialise avec le noeud de départ sans provenance (None).
+    from_node[start] = None
+    
+    while (len(search_set) > 0):
+        # On trouve le noeud ayant la plus petite valeur f dans l'ensemble de recherche :
+        min_f = inf
+        min_n = None
+        for n in search_set:
+            assert n in f, "Error : %s not in F!"%(str(n))
+            if f[n] < min_f:
+                min_f = f[n]
+                min_n = n
+        
+        # On retire le noeud ayant le plus petit 'f' et on poursuit avec lui :
+        current = min_n
+        print("Current: %s, F(%s) = %d"%(current, current, min_f))
+        search_set.remove(min_n)
+        
+        # Si le noeud en cours est l'objectif, c'est qu'aucun autre noeud dans l'espace de recherche n'a
+        # un meilleur potentiel du chemin le plus court. On reconstruit le chemin ensuite. 
+        if (current == goal):
+            path_r = [goal]
+            previous = from_node[goal]
+            while (previous is not None):
+                path_r.append(previous)
+                previous = from_node[previous]             
+            path_r.reverse() # On remet la liste dans le bon ordre
+            return (path_r, g[goal])
+        
+        ns = n_fun(current) # Les voisins du noeud en cours
+        for n in ns:
+            # Pour chaque voisin, on calcule sa fonction f et on l'ajoute à l'ensemble de recherche seulement si
+            # la valeur de g est plus basse que celle déjà connue pour ce noeud
+            g_n = g[current] + c_fun(current, n,brushfireMap)
+            f_n = g_n + h_fun(n, goal)
+            print("G(%s) = %d, F(%s) = %d"%(n, g_n, n, f_n))
+            if ((n not in g) or (g_n < g[n])):
+                from_node[n] = current
+                g[n] = g_n
+                f[n] = f_n
+                if (n not in search_set):
+                    print("Adding %s"%(str(n)))
+                    search_set.append(n)
+   
+    # Nous avons vidé l'espace de recherche sans trouver de solution. Retourner une liste vide et un coût négatif.
+    return ([], -1)
+
+def rnd_map(size, n_obs):
+    # Génère une matrice de taille size * size contenant n_obs obstacles.
+    obs = np.zeros((size,size))
+    
+    for oi in range(n_obs):
+        xl = min(size - 1, int(random()*size))
+        xh = min(size - 1, xl + max(1, int(random()*size/3)))
+        yl = min(size - 1, int(random()*size))
+        yh = min(size - 1, yl + max(1, int(random()*size/3)))
+        obs[xl:xh, yl:yh] = 1
+            
+    return obs
+
+def rnd_point(shape):
+    # Génère un point au hasard dans les limites définies par shape.
+    # Retourne un tuple (x,y)
+    from random import random
+    w = shape[0]
+    h = shape[1]
+    x = int(random()*w)
+    y = int(random()*h)
+    return (x,y)
+
+def rnd_task(obs_map):
+    # Génère deux points au hasard (start, goal) dans des cases vides de la carte obs_map.
+    # Retourne le tuple (start, goal)
+    start = rnd_point(obs_map.shape)
+    # On répète si on tombe sur autre chose qu'une case vide :
+    while (obs_map[start] != 0):
+        start = rnd_point(obs_map.shape)
+    # Même chose pour l'objectif :
+    goal = rnd_point(obs_map.shape)
+    while (obs_map[goal] != 0):
+        goal = rnd_point(obs_map.shape)
+    return (start, goal)
+
+
+def draw_map(obs_map, start, goal):
+
+    sns.heatmap(data=obs_map, annot=False)
+    # NOTE : Le système de coordonnées est inversé pour le "scatter plot" :
+    (s_y, s_x) = start
+    (g_y, g_x) = goal
+    plt.scatter(x=s_x+0.4, y=s_y+0.4, color="blue")
+    plt.scatter(x=g_x+0.4, y=g_y+0.4, color="green")
+    
+
+    
+
+
+def m_cost(node_a, node_b,brushfireMap):
+    # Pour une carte, le coût est toujours de 1.
+    # On s'assure tout de même que les cellules sont adjacentes.
+    dist_x = abs(node_a[0] - node_b[0])
+    dist_y = abs(node_a[1] - node_b[1])
+    assert dist_x <= 1 and dist_y <= 1, "m_cost : %s is not a neighbor of %s"%(str(node_a), str(node_b))
+    return math.sqrt(dist_x**2 + dist_y**2) + brushfireMap[node_b[0]][node_b[1]]
 
 
 
+def m_neighbors_8(node, obs_map):
+    # Génère les voisins valides de node selon la carte (obs_map)
+    # Connectivité 8.
+    # Retourne une liste de tuples dont les cases sont vides (=0).
+    ns = []
+    x = node[0]
+    y = node[1]
+    lx = obs_map.shape[0] - 1
+    ly = obs_map.shape[1] - 1
+    
+    min_x = -1 if (x > 0) else 0
+    min_y = -1 if (y > 0) else 0
+    max_x = 2 if (x < lx) else 1
+    max_y = 2 if (y < ly) else 1
+    
+    for dx in range(min_x, max_x):
+        for dy in range(min_y, max_y):
+            if ((dx == 0) and (dy == 0)):
+                continue
+            n = (x+dx, y+dy)
+            if (obs_map[n] == 0):
+                ns.append(n)
+            
+    return ns
 
-class AStarPlanner:
+def m_h(node_a, node_b):
+    from math import sqrt
+    (ax, ay) = node_a
+    (bx, by) = node_b
+    return sqrt((ax-bx)**2 + (ay-by)**2)
 
-    def __init__(self, ox, oy, resolution, rr, brushfire_map):
-        """
-        Initialize grid map for a star planning
+def draw_path(obs_map, start, goal, seq):
+    import matplotlib.pyplot as plt
+    import numpy as np
+    draw_map(obs_map, start, goal)
+    points = np.asarray(seq)
+    plt.scatter(y=points[:,0]+0.4, x=points[:,1]+0.4, color="white")
 
-        ox: x position list of Obstacles [m]
-        oy: y position list of Obstacles [m]
-        resolution: grid resolution [m]
-        rr: robot radius[m]
-        """
-
-        self.resolution = resolution
-        self.rr = rr
-        self.min_x, self.min_y = 0, 0
-        self.max_x, self.max_y = 0, 0
-        self.obstacle_map = None
-        self.x_width, self.y_width = 0, 0
-        self.motion = self.get_motion_model()
-        self.calc_obstacle_map(ox, oy)
-        self.brushfire_map = brushfire_map
-
-    class Node:
-        def __init__(self, x, y, cost, parent_index):
-            self.x = x  # index of grid
-            self.y = y  # index of grid
-            self.cost = cost
-            self.parent_index = parent_index
-
-        def __str__(self):
-            return str(self.x) + "," + str(self.y) + "," + str(
-                self.cost) + "," + str(self.parent_index)
-
-    def planning(self, sx, sy, gx, gy):
-        """
-        A star path search
-
-        input:
-            s_x: start x position [m]
-            s_y: start y position [m]
-            gx: goal x position [m]
-            gy: goal y position [m]
-
-        output:
-            rx: x position list of the final path
-            ry: y position list of the final path
-        """
-        # self.min_x = 7
-        # self.min_y = 2.5
-        # self.max_x = 22
-        # self.max_y = 7
-        start_node = self.Node(self.calc_xy_index(sx, self.min_x),
-                               self.calc_xy_index(sy, self.min_y), 1, -1)
-        goal_node = self.Node(self.calc_xy_index(gx, self.min_x),
-                              self.calc_xy_index(gy, self.min_y), 1, -1)
-
-        open_set, closed_set = dict(), dict()
-        open_set[self.calc_grid_index(start_node)] = start_node
-
-        while 1:
-            if len(open_set) == 0:
-                print("Open set is empty..")
-                break
-
-            c_id = min(
-                open_set,
-                key=lambda o: open_set[o].cost + self.calc_heuristic(goal_node,
-                                                                     open_set[
-                                                                         o])+ self.brushfire_map[int(open_set[o].x)][int(open_set[o].y)])
-            current = open_set[c_id]
-
-            # show graph
-            if show_animation:  # pragma: no cover
-                plt.plot(self.calc_grid_position(current.x, self.min_x),
-                         self.calc_grid_position(current.y, self.min_y), "xc")
-                # for stopping simulation with the esc key.
-                plt.gcf().canvas.mpl_connect('key_release_event',
-                                             lambda event: [exit(
-                                                 0) if event.key == 'escape' else None])
-                if len(closed_set.keys()) % 10 == 0:
-                    plt.pause(0.001)
-
-            if current.x == goal_node.x and current.y == goal_node.y:
-                print("Find goal")
-                goal_node.parent_index = current.parent_index
-                goal_node.cost = current.cost
-                break
-
-            # Remove the item from the open set
-            del open_set[c_id]
-
-            # Add it to the closed set
-            closed_set[c_id] = current
-
-            # expand_grid search grid based on motion model
-            for i, _ in enumerate(self.motion):
-                node = self.Node(current.x + self.motion[i][0],
-                                 current.y + self.motion[i][1],
-                                 current.cost + self.motion[i][2], c_id)
-                n_id = self.calc_grid_index(node)
-
-                # If the node is not safe, do nothing
-                if not self.verify_node(node):
-                    continue
-
-                if n_id in closed_set:
-                    continue
-
-                if n_id not in open_set:
-                    open_set[n_id] = node  # discovered a new node
-                else:
-                    if open_set[n_id].cost > node.cost:
-                        # This path is the best until now. record it
-                        open_set[n_id] = node
-
-        rx, ry = self.calc_final_path(goal_node, closed_set)
-
-        return rx, ry
-
-    def calc_final_path(self, goal_node, closed_set):
-        # generate final course
-        rx, ry = [self.calc_grid_position(goal_node.x, self.min_x)], [
-            self.calc_grid_position(goal_node.y, self.min_y)]
-        parent_index = goal_node.parent_index
-        while parent_index != -1:
-            n = closed_set[parent_index]
-            rx.append(self.calc_grid_position(n.x, self.min_x))
-            ry.append(self.calc_grid_position(n.y, self.min_y))
-            parent_index = n.parent_index
-
-        return rx, ry
-
-    @staticmethod
-    def calc_heuristic(n1, n2):
-        w = 1.0  # weight of heuristic
-        d = w * math.hypot(n1.x - n2.x, n1.y - n2.y)
-        return d
-
-    def calc_grid_position(self, index, min_position):
-        """
-        calc grid position
-
-        :param index:
-        :param min_position:
-        :return:
-        """
-        pos = index * self.resolution + min_position
-        return pos
-
-    def calc_xy_index(self, position, min_pos):
-        return round((position - min_pos) / self.resolution)
-
-    def calc_grid_index(self, node):
-        return (node.y - self.min_y) * self.x_width + (node.x - self.min_x)
-
-    def verify_node(self, node):
-        px = self.calc_grid_position(node.x, self.min_x)
-        py = self.calc_grid_position(node.y, self.min_y)
-
-        if px < self.min_x:
-            return False
-        elif py < self.min_y:
-            return False
-        elif px >= self.max_x:
-            return False
-        elif py >= self.max_y:
-            return False
-
-        # collision check
-        if self.obstacle_map[node.x][node.y]:
-            return False
-
-        return True
-
-    def calc_obstacle_map(self, ox, oy):
-
-        # rospy.loginfo(type(self.min_x))
-        # rospy.loginfo(type(min(ox)))
-        self.min_x = int(round(min(ox)))
-        rospy.loginfo(type(self.min_x))
-        self.min_y = int(round(min(oy)))
-        self.max_x = int(round(max(ox)))
-        self.max_y = int(round(max(oy)))
-
-        print("min_x:", self.min_x)
-        print("min_y:", self.min_y)
-        print("max_x:", self.max_x)
-        print("max_y:", self.max_y)
-
-        self.x_width = int(round((self.max_x - self.min_x) / self.resolution))
-        self.y_width = int(round((self.max_y - self.min_y) / self.resolution))
-        print("x_width:", self.x_width)
-        print("y_width:", self.y_width)
-
-        # obstacle map generation
-        self.obstacle_map = [[False for _ in range(self.y_width)]
-                             for _ in range(self.x_width)]
-        for ix in range(self.x_width):
-            x = self.calc_grid_position(ix, self.min_x)
-            for iy in range(self.y_width):
-                y = self.calc_grid_position(iy, self.min_y)
-                for iox, ioy in zip(ox, oy):
-                    d = math.hypot(iox - x, ioy - y)
-                    if d <= self.rr:
-                        self.obstacle_map[ix][iy] = True
-                        break
-
-    @staticmethod
-    def get_motion_model():
-        # dx, dy, cost
-        motion = [[1, 0, 1],
-                  [0, 1, 1],
-                  [-1, 0, 1],
-                  [0, -1, 1],
-                  [-1, -1, math.sqrt(2)],
-                  [-1, 1, math.sqrt(2)],
-                  [1, -1, math.sqrt(2)],
-                  [1, 1, math.sqrt(2)]]
-
-        return motion
-
+def m_to_px(m):
+    px = m/0.1
+    return round(px)
 
 def main():
     print(__file__ + " start!!")
+
+    
+
 
     ####################################### B R U S H F I R E #######################################
     rospy.init_node('brushfire')
@@ -264,7 +214,6 @@ def main():
     
     brushfireMap = brushfire(grid)
     
-    
     # Export brusfire map for visualization
     # Adjust color: 0 (black) = obstacle, 10-255 (white) = safest cells
     maximum = np.amax(brushfireMap)
@@ -273,83 +222,89 @@ def main():
         brushfireMap = brushfireMap.astype(float) / float(maximum) *225.0 + 30.0
         brushfireMap[mask] = 0
         # Flip image to get x->up, y->left (like top view in RVIZ looking towards x-axis)
+        # max_brush = brushfireMap.max()
+        # # print(max_brush)
+        # for x in range(brushfireMap.shape[0]):
+        #     for y in range(brushfireMap.shape[1]):
+        #         brushfireMap[x][y] = max_brush - brushfireMap[x][y]
+            
         cv2.imwrite('brushfire.bmp', cv2.transpose(cv2.flip(brushfireMap, -1)))
         rospy.loginfo("Exported brushfire.bmp")
     else:
         rospy.loginfo("brushfire failed! Is brusfire implemented?")
     
-    # Example to show grid with same color than RVIZ
-    grid[grid == -1] = 89
-    grid[grid == 0] = 178
-    grid[grid == 100] = 0
-    # Flip image to get x->up, y->left (like top view in RVIZ looking towards x-axis)
+    # # Example to show grid with same color than RVIZ
+    grid[grid == -1] = 0
+    grid[grid == 0] = 0
+    grid[grid == 100] = 1
+    # # Flip image to get x->up, y->left (like top view in RVIZ looking towards x-axis)
     cv2.imwrite('map.bmp', cv2.transpose(cv2.flip(grid, -1))) 
     rospy.loginfo("Exported map.bmp")
 
-    # plt.plot(brushfireMap,"xb")
+    # plt.plot(grid,"xb")
     # plt.show()
     ############################## A *  P A T H  P L A N N I N G ################################
-
-    
-    # start and goal position
-    sx = 7.5# [m]
-    sy = 3  # [m]
-    # gx = 13.5  # [m]
-    # gy = 2.1  # [m]
-    gx = 21
-    gy = 5.1
  
-    robot_radius = 0.01
-    # grid_size = 0.01
+    # robot_radius = 0.01
+    # # grid_size = 0.01
 
-    # Faire matrice d'obstale
-    ox, oy = [], []
+    # # Faire matrice d'obstale
+    # ox, oy = [], []
 
-    grid = np.reshape(response.map.data, [response.map.info.height, response.map.info.width])
+    # grid = np.reshape(response.map.data, [response.map.info.height, response.map.info.width])
     
-    # np.flip(grid.T)
-    grid[grid == -1] = 89
-    grid[grid == 0] = 178
-    grid[grid == 100] = 0
+    # # np.flip(grid.T)
+    # grid[grid == 89] = 0
+    # grid[grid == 178] = 0
+    # grid[grid == 100] = 1
 
-    nRows, nCols = grid.shape
+    # nRows, nCols = grid.shape
 
-    ox, oy = [], []
-    obstacles = np.where(grid==0) # 1200
+    # ox, oy = [], []
+    # # obstacles = np.where(grid==0) # 1200
     # obstacles = np.where(brushfireMap<50) #68199
 
-    rospy.loginfo(obstacles[0].size)
-
-    rospy.loginfo(obstacles)
-    for n in range(obstacles[1].shape[0]):
-        ox.append((obstacles[1][n]/10))
-        oy.append((obstacles[0][n]/10))
-
+    # for obs in obstacles:
+    #     grid[obs[0]][obs[1]] = 1
     
-    # oy = obstacles[0]
-    # ox = obstacles[1]
+    max_brush = brushfireMap.max()
+    for x in range(brushfireMap.shape[0]):
+            for y in range(brushfireMap.shape[1]):
+                brushfireMap[x][y] = max_brush - brushfireMap[x][y]
 
-    # for x in range(nRows):
-    #     for y in range(nCols):
-    #         if(grid[x][y] == 0):
-    #             ox.append(x)
-    #             oy.append(y)
 
-    if show_animation:  # pragma: no cover
-        plt.plot(ox, oy, ".k")
-        plt.plot(sx, sy, "og")
-        plt.plot(gx, gy, "xb")
-        plt.grid(True)
-        plt.axis("equal")
+    # rospy.loginfo(obstacles[0].size)
+    # rospy.loginfo(obstacles)
+    # for n in range(obstacles[1].shape[0]):
+    #     ox.append((obstacles[1][n]))
+    #     oy.append((obstacles[0][n]))
 
-    # a_star = AStarPlanner(ox, oy, response.map.info.resolution, robot_radius)
-    a_star = AStarPlanner(ox, oy, 0.1, robot_radius,brushfireMap)
-    rx, ry = a_star.planning(sx, sy, gx, gy)
+    # obs_map = rnd_map(32, 8)
+    # (m_start, m_goal) = rnd_task(obstacles)
+    
+    # m_start = (m_to_px(sx),m_to_px(sy))
+    # m_goal = (m_to_px(gx),m_to_px(gy))
+    
+    # brushfireMap[brushfireMap <= 30] == 1
+    # brushfireMap[brushfireMap > 30] == 0
+    # print(brushfireMap)
 
-    if show_animation:  # pragma: no cover
-        plt.plot(rx, ry, "-r")
-        # plt.pause(0.0001)
-        plt.show()
+    m_start = (30,60)
+    m_goal = (54,200)
+    draw_map(grid, m_start, m_goal)
+    print("On cherche le trajet de %s à %s."%(str(m_start), str(m_goal)))
+
+    # Permet de définir une nouvelle fonction à un seul paramètre. Ainsi, m_n(node) correspond à m_neighbors_8(node, obs_map)
+    m_n = lambda node : m_neighbors_8(node, grid)
+
+    (seq, cost) = astar(m_start, m_goal, m_cost, m_n, m_h,brushfireMap)
+    print("Le plus court chemin entre %s et %s est : %s (%d)"%(m_start, m_goal, seq, cost))
+    draw_path(grid, m_start, m_goal, seq[1:len(seq)-1])
+    
+    aStartPath = r'/home/emile/racecar/debris'
+    plt.savefig(aStartPath + "debris_1.png")
+
+    plt.show()
 
 
 if __name__ == '__main__':
