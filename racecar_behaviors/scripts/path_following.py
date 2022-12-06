@@ -66,7 +66,9 @@ class PathFollowing:
 
         # Done in another loop to improve the time to generate the report
         for i in range(0, len(self.balloon_list)):
-            path_to_debris(self.goal_init, self.balloon_list[i], trajectory_paths[i])
+            start = (0,0)
+            end  = (self.balloon_list[i][0], self.balloon_list[i][1])
+            path_to_debris(start, end, trajectory_paths[i])
 
 
 
