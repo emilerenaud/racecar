@@ -7,8 +7,6 @@ import cv2
 import numpy as np
 from libbehaviors import *
 
-
-
 import numpy as np
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -264,8 +262,8 @@ def path_to_debris(start, end, file_path):
                 brushfireMap[x][y] = max_brush - brushfireMap[x][y]
 
 
-    m_start = (start[0],start[1])
-    m_goal = (end[0],end[1])
+    m_start = (m_to_px(start[0]) ,m_to_px(start[1]) )
+    m_goal = (m_to_px(end[0]),m_to_px(end[1]))
     draw_map(grid, m_start, m_goal)
     print("On cherche le trajet de %s à %s."%(str(m_start), str(m_goal)))
 

@@ -26,7 +26,7 @@ class PathFollowing:
         self.sending_goal()
 
         self.balloon_list = list()
-        self.balloon_path = '/home/racecar/debris/'
+        self.balloon_path = '/home/thomas/debris/'
 
     def set_goal(self, x, y, angle):
         (quat_x, quat_y, quat_z, quat_w) = yaw_to_quaternion(angle)
